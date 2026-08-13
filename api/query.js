@@ -13,52 +13,52 @@ const PCASE = "CASE platform WHEN 'Facebook' THEN 'meta' WHEN 'Google' THEN 'gad
 // Whitelist de queries. El cliente NUNCA manda SQL: manda un "kind" + params.
 const QUERIES = {
   pacing_campaigns: p => ({
-    query: `SELECT ${PCASE} grp, campaign_name name, SUM(cost) spend
+    query: `SELECT ${PCASE} grp, campaign_name name, SUM(cost_converted) spend
             FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to
             GROUP BY grp, name HAVING spend > 0`,
     params: { from: p.from, to: p.to }
   }),
   pacing_daily: p => ({
-    query: `SELECT CAST(date AS STRING) date, ${PCASE} grp, SUM(cost) spend
+    query: `SELECT CAST(date AS STRING) date, ${PCASE} grp, SUM(cost_converted) spend
             FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to
             GROUP BY date, grp`,
     params: { from: p.from, to: p.to }
   }),
   ga4_totals: p => ({
-    query: `SELECT SUM(purchase_revenue) rev, SUM(purchase) tx, SUM(session_start) sess
+    query: `SELECT SUM(purchase_revenue_converted) rev, SUM(purchase) tx, SUM(session_start) sess
             FROM ${CAMP} WHERE date BETWEEN @from AND @to`,
     params: { from: p.from, to: p.to }
   }),
   results: p => ({
     query: `SELECT ${PCASE} grp, campaign_name name,
-              SUM(cost) cons, SUM(impressions) imp, SUM(clicks) clk,
-              SUM(purchase_revenue) ga4Rev, SUM(purchase) ga4Tx, SUM(session_start) sess,
-              SUM(ads_purchase_revenue) plRev, SUM(ads_purchase) plTx
+              SUM(cost_converted) cons, SUM(impressions) imp, SUM(clicks) clk,
+              SUM(purchase_revenue_converted) ga4Rev, SUM(purchase) ga4Tx, SUM(session_start) sess,
+              SUM(ads_purchase_revenue_converted) plRev, SUM(ads_purchase) plTx
             FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to
             GROUP BY grp, name HAVING cons > 0 OR ga4Rev > 0 OR plRev > 0`,
     params: { from: p.from, to: p.to }
   }),
   camp_daily: p => ({
     query: `SELECT CAST(date AS STRING) date,
-              SUM(cost) cons, SUM(impressions) imp, SUM(clicks) clk,
-              SUM(purchase_revenue) ga4Rev, SUM(purchase) ga4Tx, SUM(session_start) sess,
-              SUM(ads_purchase_revenue) plRev, SUM(ads_purchase) plTx
+              SUM(cost_converted) cons, SUM(impressions) imp, SUM(clicks) clk,
+              SUM(purchase_revenue_converted) ga4Rev, SUM(purchase) ga4Tx, SUM(session_start) sess,
+              SUM(ads_purchase_revenue_converted) plRev, SUM(ads_purchase) plTx
             FROM ${CAMP} WHERE campaign_name = @name AND ${PLAT} AND date BETWEEN @from AND @to
             GROUP BY date ORDER BY date`,
     params: { name: p.name, from: p.from, to: p.to }
   }),
   adsets: p => ({
     query: `SELECT ad_set_name name,
-              SUM(cost) cons, SUM(impressions) imp, SUM(clicks) clk,
-              SUM(ads_purchase_revenue) plRev, SUM(ads_purchase) plTx
+              SUM(cost_converted) cons, SUM(impressions) imp, SUM(clicks) clk,
+              SUM(ads_purchase_revenue_converted) plRev, SUM(ads_purchase) plTx
             FROM ${ADSET} WHERE campaign_name = @name AND date BETWEEN @from AND @to
             GROUP BY ad_set_name HAVING cons > 0 ORDER BY cons DESC`,
     params: { name: p.name, from: p.from, to: p.to }
   }),
   adset_daily: p => ({
     query: `SELECT CAST(date AS STRING) date,
-              SUM(cost) cons, SUM(impressions) imp, SUM(clicks) clk,
-              SUM(ads_purchase_revenue) plRev, SUM(ads_purchase) plTx
+              SUM(cost_converted) cons, SUM(impressions) imp, SUM(clicks) clk,
+              SUM(ads_purchase_revenue_converted) plRev, SUM(ads_purchase) plTx
             FROM ${ADSET} WHERE campaign_name = @camp AND ad_set_name = @adset AND date BETWEEN @from AND @to
             GROUP BY date ORDER BY date`,
     params: { camp: p.camp, adset: p.adset, from: p.from, to: p.to }
