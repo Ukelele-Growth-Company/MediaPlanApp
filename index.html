@@ -247,7 +247,7 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
   </div>
 
   <div class="kpis">
-    <div class="kpi"><div class="lbl">Inversi&oacute;n objetivo</div><div class="val" id="kTarget">US$0</div><div class="meta" id="kTargetMeta">Por conectar</div></div>
+    <div class="kpi"><div class="lbl">Inversi&oacute;n objetivo</div><div class="val" id="kTarget">US$11K</div><div class="meta" id="kTargetMeta">Por conectar</div></div>
     <div class="kpi b2"><div class="lbl">Inversi&oacute;n ejecutada</div><div class="val" id="kSpent">-</div><div class="meta" id="kSpentMeta">&nbsp;</div></div>
     <span id="kBudget" style="display:none"></span><span id="kBudgetMeta" style="display:none"></span>
     <div class="kpi b3"><div class="lbl">Proyección de cierre</div><div class="val" id="kProj">—</div><div class="meta" id="kProjMeta">&nbsp;</div></div>
@@ -322,7 +322,7 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
 </div>
 
 <script>
-const LS_PREFIX="mp_prune_cl_v2_";
+const LS_PREFIX="mp_prune_cl_v2_"; const TARGET_INVEST=11000;
 const PLATFORMS=[
   {key:"meta", label:"Meta Ads",   color:"#E30233"},
   {key:"gads", label:"Google Ads", color:"#1689C0"}
@@ -598,12 +598,12 @@ function renderSummary(grandSpent){
     document.getElementById("pbSub").textContent=`${fmtMoney(grandSpent)} de ${fmtMoney(grandPlan)} · ${dEl}/${dTot} días · cierre estimado ${fmtMoney(proj)} (${diff>=0?"+":""}${fmtMoney(diff)})`;
   }
   document.getElementById("pbChip").textContent=chip;
-  document.getElementById("kSpent").textContent=fmtK(grandSpent);
-  document.getElementById("kSpentMeta").innerHTML=`<strong>${execPct.toFixed(0)}%</strong> del plan · ${dEl}/${dTot} días`;
+  document.getElementById("kTarget").textContent=fmtK(TARGET_INVEST);document.getElementById("kTargetMeta").innerHTML=`Pace ideal a hoy: <strong>${fmtK(TARGET_INVEST*tFrac)}</strong>`;document.getElementById("kSpent").textContent=fmtK(grandSpent);
+  document.getElementById("kSpentMeta").innerHTML=`<strong>${pct(grandSpent,TARGET_INVEST).toFixed(0)}%</strong> del objetivo · ${dEl}/${dTot} días`;
   document.getElementById("kBudget").textContent=fmtK(grandPlan);
   document.getElementById("kBudgetMeta").innerHTML=grandPlan>0?`Pace ideal a hoy: <strong>${fmtK(ideal)}</strong>`:"Sin plan cargado";
   document.getElementById("kProj").textContent=fmtK(proj);
-  document.getElementById("kProjMeta").innerHTML=grandPlan>0?`<strong>${pct(proj,grandPlan).toFixed(0)}%</strong> del presupuesto`:"&nbsp;";
+  document.getElementById("kProjMeta").innerHTML=`<strong>${pct(proj,TARGET_INVEST).toFixed(0)}%</strong> del objetivo`;
   document.getElementById("kRoas").textContent=roas>0?roas.toFixed(2)+"x":"—";
   document.getElementById("kRoasMeta").innerHTML=`Revenue GA4: <strong>${fmtK(DATA.ga4.revenue)}</strong>`;
   document.getElementById("ga4Line").innerHTML=`GA4 · <strong>${DATA.ga4.transactions.toLocaleString("es-CL")}</strong> transacciones · <strong>${fmtMoney(DATA.ga4.revenue)}</strong> revenue · <strong>${DATA.ga4.sessions.toLocaleString("es-CL")}</strong> sesiones · ROAS blended ${roas>0?roas.toFixed(2)+"x":"—"}`;
