@@ -212,7 +212,7 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
 @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.kpis{grid-template-columns:1fr}}
 </style>
-<style>#loginOv{display:none!important}</style></head>
+<style>#loginOv{display:none!important}#pbSub{display:none!important}</style></head>
 <body>
 <div class="wrap">
   <div class="topbar">
@@ -345,7 +345,7 @@ const numify=r=>({name:r.name, cons:+r.cons||0, imp:+r.imp||0, clk:+r.clk||0,
 const fmtMoney=n=>(n==null||isNaN(n))?"—":"US$"+Math.round(n).toLocaleString("en-US");
 const fmtK=n=>{if(n==null||isNaN(n))return"—";
   if(Math.abs(n)>=1e6)return"US$"+(n/1e6).toLocaleString("en-US",{maximumFractionDigits:1})+"M";
-  if(Math.abs(n)>=1e3)return"US$"+(n/1e3).toLocaleString("en-US",{maximumFractionDigits:0})+"K";
+  if(Math.abs(n)>=1e3)return"US$"+(n/1e3).toLocaleString("en-US",{minimumFractionDigits:1,maximumFractionDigits:1})+"K";
   return"US$"+Math.round(n).toLocaleString("en-US");};
 const pct=(a,b)=>b>0?a/b*100:0;
 
