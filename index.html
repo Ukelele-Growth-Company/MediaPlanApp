@@ -255,7 +255,7 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
   </div>
 
   <div class="card">
-    <h3><span class="dot"></span>Ritmo de inversión — acumulado vs plan<span class="r" id="chartR">&nbsp;</span></h3>
+    <h3><span class="dot"></span>Ritmo de inversión — por d&iacute;a<span class="r" id="chartR">&nbsp;</span></h3>
     <div class="chart-box"><canvas id="paceChart"></canvas></div>
   </div>
 
@@ -613,12 +613,12 @@ function drawChart(budTotal){
   const iso=d=>MB.first.getFullYear()+"-"+String(MB.first.getMonth()+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
   const labels=[],actualCum=[];let cum=0;
   for(let d=1;d<=MB.daysInMonth;d++){labels.push(String(d));
-    if(d<=MB.daysElapsed){let day=0;PLATFORMS.forEach(p=>day+=(DATA.daily[p.key][iso(d)]||0));cum+=day;actualCum.push(cum);}
+    if(d<=MB.daysElapsed){let day=0;PLATFORMS.forEach(p=>day+=(DATA.daily[p.key][iso(d)]||0));actualCum.push(day);}
     else actualCum.push(null);}
-  const ideal=[],bud=[];for(let d=1;d<=MB.daysInMonth;d++){ideal.push(budTotal>0?budTotal*(d/MB.daysInMonth):null);bud.push(budTotal>0?budTotal:null);}
-  const ds=[{label:"Ejecutado acumulado",data:actualCum,borderColor:"#E30233",backgroundColor:"rgba(227,2,51,.08)",borderWidth:3,tension:.15,fill:true,pointRadius:0,spanGaps:false}];
-  if(budTotal>0){ds.push({label:"Pace ideal",data:ideal,borderColor:"#004E8A",borderWidth:2,borderDash:[6,4],fill:false,pointRadius:0});
-    ds.push({label:"Presupuesto",data:bud,borderColor:"#A63D81",borderWidth:1.5,borderDash:[2,3],fill:false,pointRadius:0});}
+  const ideal=[],bud=[];const dTgt=TARGET_INVEST>0?TARGET_INVEST/MB.daysInMonth:null;for(let d=1;d<=MB.daysInMonth;d++){ideal.push(dTgt);bud.push(null);}
+  const ds=[{label:"Inversi\u00f3n diaria",data:actualCum,borderColor:"#E30233",backgroundColor:"rgba(227,2,51,.08)",borderWidth:3,tension:.15,fill:true,pointRadius:0,spanGaps:false}];
+  if(TARGET_INVEST>0){ds.push({label:"Objetivo diario",data:ideal,borderColor:"#004E8A",borderWidth:2,borderDash:[6,4],fill:false,pointRadius:0});
+    }
   const cfg={type:"line",data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,
     interaction:{mode:"index",intersect:false},
     plugins:{legend:{labels:{font:{family:"Montserrat",size:11},usePointStyle:true,pointStyle:"line",boxWidth:26}},
