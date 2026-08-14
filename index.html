@@ -586,16 +586,16 @@ function renderSummary(grandSpent){
   const proj=dEl>0?grandSpent/dEl*dTot:0, ideal=grandPlan*tFrac;
   const roas=grandSpent>0?DATA.ga4.revenue/grandSpent:0, execPct=pct(grandSpent,grandPlan);
   const bn=document.getElementById("paceBanner");let chip;
-  if(grandPlan<=0){bn.className="pace-banner on";chip="SIN PLAN";
+  if(TARGET_INVEST<=0){bn.className="pace-banner on";chip="SIN OBJETIVO";
     document.getElementById("pbMain").textContent="Cargá el plan por campaña para activar el pacing";
     document.getElementById("pbSub").textContent=`Ejecutado a hoy: ${fmtMoney(grandSpent)} · ${dEl} de ${dTot} días`;
-  }else{const pv=pct(proj,grandPlan);
+  }else{const pv=pct(proj,TARGET_INVEST);const execO=pct(grandSpent,TARGET_INVEST);
     if(pv>105){bn.className="pace-banner over";chip="SOBRE-PACING";}
     else if(pv<95){bn.className="pace-banner under";chip="SUB-EJECUTADO";}
     else{bn.className="pace-banner on";chip="EN RITMO";}
-    document.getElementById("pbMain").textContent=`${execPct.toFixed(0)}% del plan ejecutado · proyección de cierre ${pv.toFixed(0)}% del presupuesto`;
-    const diff=proj-grandPlan;
-    document.getElementById("pbSub").textContent=`${fmtMoney(grandSpent)} de ${fmtMoney(grandPlan)} · ${dEl}/${dTot} días · cierre estimado ${fmtMoney(proj)} (${diff>=0?"+":""}${fmtMoney(diff)})`;
+    document.getElementById("pbMain").textContent=`${execO.toFixed(0)}% del objetivo ejecutado · proyección de cierre ${pv.toFixed(0)}% del objetivo`;
+    const diff=proj-TARGET_INVEST;
+    document.getElementById("pbSub").textContent=`${fmtMoney(grandSpent)} de ${fmtMoney(TARGET_INVEST)} · ${dEl}/${dTot} días · cierre estimado ${fmtMoney(proj)} (${diff>=0?"+":""}${fmtMoney(diff)})`;
   }
   document.getElementById("pbChip").textContent=chip;
   document.getElementById("kTarget").textContent=fmtK(TARGET_INVEST);document.getElementById("kTargetMeta").innerHTML=`Pace ideal a hoy: <strong>${fmtK(TARGET_INVEST*tFrac)}</strong>`;document.getElementById("kSpent").textContent=fmtK(grandSpent);
