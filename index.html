@@ -595,7 +595,7 @@ function renderSummary(grandSpent){
     else{bn.className="pace-banner on";chip="EN RITMO";}
     document.getElementById("pbMain").textContent=`${execO.toFixed(0)}% del objetivo ejecutado · proyección de cierre ${pv.toFixed(0)}% del objetivo`;
     const diff=proj-TARGET_INVEST;
-    document.getElementById("pbSub").textContent=`${fmtMoney(grandSpent)} de ${fmtMoney(TARGET_INVEST)} · ${dEl}/${dTot} días · cierre estimado ${fmtMoney(proj)} (${diff>=0?"+":""}${fmtMoney(diff)})`;
+    document.getElementById("pbSub").textContent=`${fmtMoney(grandSpent)} de ${fmtMoney(TARGET_INVEST)} · ${dEl}/${dTot} días · cierre estimado ${fmtMoney(proj)} (${diff>=0?"+":"-"}${fmtMoney(Math.abs(diff))})`;
   }
   document.getElementById("pbChip").textContent=chip;
   document.getElementById("kTarget").textContent=fmtK(TARGET_INVEST);document.getElementById("kTargetMeta").innerHTML=`Pace ideal a hoy: <strong>${fmtK(TARGET_INVEST*tFrac)}</strong>`;document.getElementById("kSpent").textContent=fmtK(grandSpent);
