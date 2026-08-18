@@ -212,7 +212,7 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
 @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.kpis{grid-template-columns:1fr}}
 </style>
-<style>#loginOv{display:none!important}#pbSub{display:none!important}</style></head>
+<style>#loginOv{display:none!important}#pbSub{display:none!important}.plan-ok{margin-left:4px;border:none;background:#1a7f37;color:#fff;border-radius:4px;min-width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;vertical-align:middle}td[data-neg="true"]{color:#E30233;font-weight:800}</style></head>
 <body>
 <div class="wrap">
   <div class="topbar">
@@ -265,7 +265,7 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
       <table>
         <thead><tr>
           <th>Medio / Campaña</th><th>Plan mensual</th><th>Ejecutado</th><th>% ejec.</th>
-          <th>Pace ideal</th><th>Ritmo/día</th><th>Estado</th>
+          <th>Ritmo/día</th><th>Estado</th>
         </tr></thead>
         <tbody id="body"></tbody>
       </table>
@@ -475,7 +475,7 @@ async function loadData(){
   }
   document.getElementById("pbMain").textContent="Cargando datos…";
   document.getElementById("pbSub").innerHTML="&nbsp;";document.getElementById("pbChip").textContent="…";
-  document.getElementById("body").innerHTML=`<tr><td colspan="7"><div class="loading"><div class="spinner"></div>Consultando prune_cl…</div></td></tr>`;
+  document.getElementById("body").innerHTML=`<tr><td colspan="6"><div class="loading"><div class="spinner"></div>Consultando prune_cl…</div></td></tr>`;
   try{
     const P={from:MB.start_date,to:MB.end_date};
     const[camps,daily,ga4,budRows]=await Promise.all([
@@ -495,7 +495,7 @@ async function loadData(){
   }catch(e){
     document.getElementById("pbMain").textContent="No se pudieron cargar los datos";
     document.getElementById("pbSub").textContent=e.message||"";
-    document.getElementById("body").innerHTML=`<tr><td colspan="7"><div class="errbox">${e.message||"Error al consultar."} — probá recargar.</div></td></tr>`;
+    document.getElementById("body").innerHTML=`<tr><td colspan="6"><div class="errbox">${e.message||"Error al consultar."} — probá recargar.</div></td></tr>`;
   }
 }
 
@@ -510,7 +510,7 @@ function statePill(bu,proj){
 function render(){
   if(!DATA)return;
   const ym=monthSel.value, showAll=document.getElementById("showAll").checked;
-  const dEl=MB.daysElapsed, dTot=MB.daysInMonth, tFrac=dTot>0?dEl/dTot:0;
+  const dEl=MB.daysElapsed, dTot=MB.daysInMonth, tFrac=dTot>0?dEl/dTot:0;const daysLeft=Math.max(dTot-dEl,1);
   const body=document.getElementById("body"); body.innerHTML="";
 
   let grandSpent=0, grandPlan=monthBudgetTotal(ym);
@@ -520,47 +520,47 @@ function render(){
     const platPlan=platBudgetTotal(ym,p.key);
     // group header
     const gr=document.createElement("tr");gr.className="grp-row "+p.key;
-    gr.innerHTML=`<td colspan="7">${p.label}</td>`;body.appendChild(gr);
+    gr.innerHTML=`<td colspan="6">${p.label}</td>`;body.appendChild(gr);
     // rows
     const visible=camps.filter(c=> showAll || c.spend>0 || getBudget(ym,p.key,c.name)!=="");
     if(visible.length===0){
-      const tr=document.createElement("tr");tr.innerHTML=`<td colspan="7" style="color:#999;font-style:italic">Sin campañas con inversión este mes</td>`;body.appendChild(tr);
+      const tr=document.createElement("tr");tr.innerHTML=`<td colspan="6" style="color:#999;font-style:italic">Sin campañas con inversión este mes</td>`;body.appendChild(tr);
     }
     visible.forEach(c=>{
       const bu=parseFloat(getBudget(ym,p.key,c.name))||0;
-      const ep=pct(c.spend,bu), ideal=bu*tFrac, proj=dEl>0?c.spend/dEl*dTot:0, perDay=dEl>0?c.spend/dEl:0;
+      const ep=pct(c.spend,bu), ideal=bu*tFrac, proj=dEl>0?c.spend/dEl*dTot:0, perDay=dEl>0?c.spend/dEl:0, ritmo=(bu-c.spend)/daysLeft;
       const[cls,txt]=statePill(bu,proj);
       const bar=Math.min(ep,100);
       const tr=document.createElement("tr");
       tr.innerHTML=`
         <td><span class="camp-name">${c.name}</span></td>
         <td><input class="plan-inp ${getBudget(ym,p.key,c.name)===""?'empty':''}" type="number" min="0" step="1000" placeholder="0"
-             value="${getBudget(ym,p.key,c.name)}" data-plat="${p.key}" data-name="${encodeURIComponent(c.name)}"></td>
+             value="${getBudget(ym,p.key,c.name)}" data-plat="${p.key}" data-name="${encodeURIComponent(c.name)}"><button class="plan-ok" title="Aplicar">&#10003;</button></td>
         <td>${fmtMoney(c.spend)}<div class="progress"><span style="width:${bar}%;background:${p.color}"></span></div></td>
         <td>${bu>0?ep.toFixed(0)+"%":"—"}</td>
-        <td>${bu>0?fmtMoney(ideal):"—"}</td>
-        <td>${fmtMoney(perDay)}</td>
+        
+        <td data-neg="${ritmo<0}">${bu>0?fmtMoney(ritmo):"&mdash;"}</td>
         <td><span class="pill ${cls}">${txt}</span></td>`;
       body.appendChild(tr);
     });
     // subtotal
-    const sIdeal=platPlan*tFrac, sProj=dEl>0?platSpent/dEl*dTot:0, sPerDay=dEl>0?platSpent/dEl:0;
+    const sIdeal=platPlan*tFrac, sProj=dEl>0?platSpent/dEl*dTot:0, sPerDay=dEl>0?platSpent/dEl:0, sRitmo=(platPlan-platSpent)/daysLeft;
     const[scls,stxt]=statePill(platPlan,sProj);
     const sr=document.createElement("tr");sr.className="sub-row";
     sr.innerHTML=`<td>Subtotal ${p.label}</td><td>${platPlan>0?fmtMoney(platPlan):"—"}</td>
       <td>${fmtMoney(platSpent)}</td><td>${platPlan>0?pct(platSpent,platPlan).toFixed(0)+"%":"—"}</td>
-      <td>${platPlan>0?fmtMoney(sIdeal):"—"}</td>
-      <td>${fmtMoney(sPerDay)}</td><td><span class="pill ${scls}">${stxt}</span></td>`;
+      
+      <td data-neg="${sRitmo<0}">${platPlan>0?fmtMoney(sRitmo):"&mdash;"}</td><td><span class="pill ${scls}">${stxt}</span></td>`;
     body.appendChild(sr);
   });
   // grand total
-  const gIdeal=grandPlan*tFrac, gProj=dEl>0?grandSpent/dEl*dTot:0, gPerDay=dEl>0?grandSpent/dEl:0;
+  const gIdeal=grandPlan*tFrac, gProj=dEl>0?grandSpent/dEl*dTot:0, gPerDay=dEl>0?grandSpent/dEl:0, gRitmo=(grandPlan-grandSpent)/daysLeft;
   const[gcls,gtxt]=statePill(grandPlan,gProj);
   const tr=document.createElement("tr");tr.className="total-row";
   tr.innerHTML=`<td>TOTAL</td><td>${grandPlan>0?fmtMoney(grandPlan):"—"}</td>
     <td>${fmtMoney(grandSpent)}</td><td>${grandPlan>0?pct(grandSpent,grandPlan).toFixed(0)+"%":"—"}</td>
-    <td>${grandPlan>0?fmtMoney(gIdeal):"—"}</td>
-    <td>${fmtMoney(gPerDay)}</td><td><span class="pill ${gcls}">${gtxt}</span></td>`;
+    
+    <td data-neg="${gRitmo<0}">${grandPlan>0?fmtMoney(gRitmo):"&mdash;"}</td><td><span class="pill ${gcls}">${gtxt}</span></td>`;
   body.appendChild(tr);
 
   // wire inputs
@@ -570,10 +570,10 @@ function render(){
       inp.classList.toggle("empty",inp.value==="");
       flagSaved(); renderSummary(grandSpentCache); // light recompute
     });
-    inp.addEventListener("change",render); // full re-render (updates subtotals/pills) on blur/enter
+    inp.addEventListener("change",render);inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();render();}}); // full re-render (updates subtotals/pills) on blur/enter
   });
 
-  grandSpentCache=grandSpent;
+  body.querySelectorAll(".plan-ok").forEach(function(btn){btn.addEventListener("click",function(){var inp=btn.parentNode.querySelector(".plan-inp");if(inp){setBudget(ym,inp.dataset.plat,decodeURIComponent(inp.dataset.name),inp.value);flagSaved();}render();});});grandSpentCache=grandSpent;
   renderSummary(grandSpent);
   drawChart(grandPlan);
   document.getElementById("chartR").textContent=`${dEl} de ${dTot} días · pace ideal ${(tFrac*100).toFixed(0)}%`;
