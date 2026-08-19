@@ -212,7 +212,7 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
 @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.kpis{grid-template-columns:1fr}}
 </style>
-<style>#loginOv{display:none!important}#pbSub{display:none!important}.plan-ok{margin-left:4px;border:none;background:#1a7f37;color:#fff;border-radius:4px;min-width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;vertical-align:middle}td[data-neg="true"]{color:#E30233;font-weight:800}</style></head>
+<style>#loginOv{display:none!important}#pbSub{display:none!important}.plan-ok{margin-left:4px;border:none;background:#1a7f37;color:#fff;border-radius:4px;min-width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;vertical-align:middle}td[data-neg="true"]{color:#E30233;font-weight:800}.plan-inp:disabled{background:#f2f2f2;color:#888;cursor:not-allowed}.plan-inp:disabled + .plan-ok{display:none}</style></head>
 <body>
 <div class="wrap">
   <div class="topbar">
@@ -510,7 +510,7 @@ function statePill(bu,proj){
 function render(){
   if(!DATA)return;
   const ym=monthSel.value, showAll=false;
-  const dEl=MB.daysElapsed, dTot=MB.daysInMonth, tFrac=dTot>0?dEl/dTot:0;const daysLeft=Math.max(dTot-dEl,1);
+  const dEl=MB.daysElapsed, dTot=MB.daysInMonth, tFrac=dTot>0?dEl/dTot:0;const daysLeft=Math.max(dTot-dEl,1);const isPast=!MB.isCur;
   const body=document.getElementById("body"); body.innerHTML="";
 
   let grandSpent=0, grandPlan=monthBudgetTotal(ym);
@@ -534,12 +534,12 @@ function render(){
       const tr=document.createElement("tr");
       tr.innerHTML=`
         <td><span class="camp-name">${c.name}</span></td>
-        <td><input class="plan-inp ${getBudget(ym,p.key,c.name)===""?'empty':''}" type="number" min="0" step="1000" placeholder="0"
+        <td><input class="plan-inp ${getBudget(ym,p.key,c.name)===""?'empty':''}" type="number" min="0" step="1000" placeholder="0"${isPast?" disabled":""}
              value="${getBudget(ym,p.key,c.name)}" data-plat="${p.key}" data-name="${encodeURIComponent(c.name)}"><button class="plan-ok" title="Aplicar">&#10003;</button></td>
         <td>${fmtMoney(c.spend)}<div class="progress"><span style="width:${bar}%;background:${p.color}"></span></div></td>
         <td>${bu>0?ep.toFixed(0)+"%":"—"}</td>
         
-        <td data-neg="${ritmo<0}">${bu>0?fmtMoney(ritmo):"&mdash;"}</td>
+        <td data-neg="${!isPast&&ritmo<0}">${isPast?"&mdash;":(bu>0?fmtMoney(ritmo):"&mdash;")}</td>
         <td><span class="pill ${cls}">${txt}</span></td>`;
       body.appendChild(tr);
     });
@@ -550,7 +550,7 @@ function render(){
     sr.innerHTML=`<td>Subtotal ${p.label}</td><td>${platPlan>0?fmtMoney(platPlan):"—"}</td>
       <td>${fmtMoney(platSpent)}</td><td>${platPlan>0?pct(platSpent,platPlan).toFixed(0)+"%":"—"}</td>
       
-      <td data-neg="${sRitmo<0}">${platPlan>0?fmtMoney(sRitmo):"&mdash;"}</td><td><span class="pill ${scls}">${stxt}</span></td>`;
+      <td data-neg="${!isPast&&sRitmo<0}">${isPast?"&mdash;":(platPlan>0?fmtMoney(sRitmo):"&mdash;")}</td><td><span class="pill ${scls}">${stxt}</span></td>`;
     body.appendChild(sr);
   });
   // grand total
@@ -560,7 +560,7 @@ function render(){
   tr.innerHTML=`<td>TOTAL</td><td>${grandPlan>0?fmtMoney(grandPlan):"—"}</td>
     <td>${fmtMoney(grandSpent)}</td><td>${grandPlan>0?pct(grandSpent,grandPlan).toFixed(0)+"%":"—"}</td>
     
-    <td data-neg="${gRitmo<0}">${grandPlan>0?fmtMoney(gRitmo):"&mdash;"}</td><td><span class="pill ${gcls}">${gtxt}</span></td>`;
+    <td data-neg="${!isPast&&gRitmo<0}">${isPast?"&mdash;":(grandPlan>0?fmtMoney(gRitmo):"&mdash;")}</td><td><span class="pill ${gcls}">${gtxt}</span></td>`;
   body.appendChild(tr);
 
   // wire inputs
