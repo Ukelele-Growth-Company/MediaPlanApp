@@ -226,9 +226,9 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
     <div class="controls">
       <span class="mlabel">Mes</span>
       <select id="monthSel"></select>
-      <label class="toggle"><input type="checkbox" id="showAll"> Ver campañas sin inversión</label>
-      <label class="toggle"><input type="checkbox" id="demoChk"> Modo demo</label>
-      <button id="resetDemo" class="mini-btn" style="display:none">Reiniciar ejemplo</button>
+      
+      
+      
     </div>
   </div>
 
@@ -364,7 +364,7 @@ function monthBounds(ym){const[y,m]=ym.split("-").map(Number);
   return{first,last,end,daysInMonth,daysElapsed,isCur,start_date:iso(first),end_date:iso(end)};}
 
 // ---- demo mode ----
-let DEMO = (localStorage.getItem(LS_PREFIX+"mode") || "real") === "demo";
+let DEMO = false;
 const modePrefix = () => DEMO ? LS_PREFIX+"demo__" : LS_PREFIX;
 
 // ---- budgets ----
@@ -509,7 +509,7 @@ function statePill(bu,proj){
 
 function render(){
   if(!DATA)return;
-  const ym=monthSel.value, showAll=document.getElementById("showAll").checked;
+  const ym=monthSel.value, showAll=false;
   const dEl=MB.daysElapsed, dTot=MB.daysInMonth, tFrac=dTot>0?dEl/dTot:0;const daysLeft=Math.max(dTot-dEl,1);
   const body=document.getElementById("body"); body.innerHTML="";
 
@@ -723,7 +723,7 @@ function renderResults(){
   Object.values(detailCharts).forEach(c=>{try{c.destroy();}catch(e){}});detailCharts={};
   buildResHead();
   const NCOL=1+METRICS.length;
-  const showAll=document.getElementById("showAll").checked,body=document.getElementById("rBody");body.innerHTML="";
+  const showAll=false,body=document.getElementById("rBody");body.innerHTML="";
   const T={name:"TOTAL"};BASE_FIELDS.forEach(k=>T[k]=0);
   PLATFORMS.forEach(p=>{
     const rows=(RDATA[p.key]||[]).slice().sort((a,b)=>(b.cons||0)-(a.cons||0));
@@ -945,9 +945,9 @@ document.getElementById("rBody").addEventListener("click",e=>{
 });
 
 function syncModeUI(){
-  document.getElementById("demoChk").checked=DEMO;
+  
   document.getElementById("demoBadge").style.display=DEMO?"inline-block":"none";
-  document.getElementById("resetDemo").style.display=DEMO?"inline-block":"none";
+  
   const d=document.querySelector(".title-block .desc");
   if(d) d.textContent=DEMO
     ? "MODO DEMO · datos y campañas de ejemplo para probar las funciones"
@@ -957,16 +957,9 @@ function syncModeUI(){
 function onMonthChange(){MB=monthBounds(monthSel.value);
   document.getElementById("footPeriod").textContent=`${MB.start_date} → ${MB.end_date}`;loadData();}
 monthSel.addEventListener("change",onMonthChange);
-document.getElementById("showAll").addEventListener("change",()=>{if(DATA)render();if(RDATA)renderResults();});
-document.getElementById("demoChk").addEventListener("change",e=>{
-  DEMO=e.target.checked; localStorage.setItem(LS_PREFIX+"mode",DEMO?"demo":"real");
-  DATA=null; RDATA=null; loadData(); if(resultsInit)loadResults();
-});
-document.getElementById("resetDemo").addEventListener("click",()=>{
-  if(!DEMO)return;
-  clearMonthBudgets(monthSel.value); // wipe demo plans for this month, then reseed
-  DATA=null; loadData(); if(resultsInit)loadResults(); flagSaved();
-});
+
+
+
 
 // ---- login ----
 function showLogin(msg){const ov=document.getElementById("loginOv");ov.hidden=false;
