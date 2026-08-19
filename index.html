@@ -212,7 +212,7 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
 @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.kpis{grid-template-columns:1fr}}
 </style>
-<style>#loginOv{display:none!important}#pbSub{display:none!important}.plan-ok{margin-left:4px;border:none;background:#1a7f37;color:#fff;border-radius:4px;min-width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;vertical-align:middle}td[data-neg="true"]{color:#E30233;font-weight:800}.plan-inp:disabled{background:#f2f2f2;color:#888;cursor:not-allowed}.plan-inp:disabled + .plan-ok{display:none}</style></head>
+<style>#loginOv{display:none!important}#pbSub{display:none!important}.plan-ok{margin-left:4px;border:none;background:#1a7f37;color:#fff;border-radius:4px;min-width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;vertical-align:middle}td[data-neg="true"]{color:#E30233;font-weight:800}.plan-inp:disabled{background:#f2f2f2;color:#888;cursor:not-allowed}.plan-inp:disabled + .plan-ok{display:none}.kpi .meta{display:none}.pb-left{min-width:150px}.pb-label{font-family:var(--font-d);font-weight:700;font-size:11px;letter-spacing:.07em;text-transform:uppercase;opacity:.85}.pb-big{font-family:var(--font-d);font-weight:800;font-size:32px;line-height:1.05}.pb-sublabel{font-size:12px;opacity:.8;margin-top:2px}.pb-mid{flex:1;min-width:240px}.pb-bar{position:relative;height:10px;background:rgba(255,255,255,.25);border-radius:6px;margin:2px 0 4px}.pb-bar-fill{position:absolute;top:0;left:0;height:100%;background:#fff;border-radius:6px;transition:width .4s ease}.pb-bar-marker{position:absolute;top:-4px;width:3px;height:18px;background:#FFD24A;border-radius:2px;transform:translateX(-1.5px)}.pb-scale{display:flex;justify-content:space-between;font-size:11px;opacity:.75}.pb-caption{font-size:12.5px;opacity:.95;margin-top:6px}.pb-note{display:flex;gap:7px;align-items:flex-start;font-size:12px;color:var(--uke-gris-cuerpo);margin:-4px 2px 18px}</style></head>
 <body>
 <div class="wrap">
   <div class="topbar">
@@ -238,13 +238,7 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
   </div>
 
   <div id="tabPacing">
-  <div id="paceBanner" class="pace-banner on">
-    <div>
-      <div class="pb-main" id="pbMain">Cargando datos…</div>
-      <div class="pb-sub" id="pbSub">&nbsp;</div>
-    </div>
-    <div class="pace-chip" id="pbChip">—</div>
-  </div>
+  <div id="paceBanner" class="pace-banner on"><span id="pbMain" style="display:none"></span><span id="pbSub" style="display:none"></span><div class="pb-left"><div class="pb-label">Ejecuci&oacute;n del plan</div><div class="pb-big"><span id="pbPct">&mdash;</span></div><div class="pb-sublabel">del objetivo ejecutado</div></div><div class="pb-mid"><div class="pb-bar"><div class="pb-bar-fill" id="pbFill"></div><div class="pb-bar-marker" id="pbMarker" title="Ritmo del tiempo transcurrido"></div></div><div class="pb-scale"><span>0%</span><span>100%</span></div><div class="pb-caption" id="pbCaption">&nbsp;</div></div><div class="pace-chip" id="pbChip">&mdash;</div></div>
 
   <div class="kpis">
     <div class="kpi"><div class="lbl">Inversi&oacute;n objetivo</div><div class="val" id="kTarget">US$11K</div><div class="meta" id="kTargetMeta">Por conectar</div></div>
@@ -252,7 +246,7 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
     <span id="kBudget" style="display:none"></span><span id="kBudgetMeta" style="display:none"></span>
     <div class="kpi b3"><div class="lbl">Proyección de cierre</div><div class="val" id="kProj">—</div><div class="meta" id="kProjMeta">&nbsp;</div></div>
     <span id="kRoas" style="display:none"></span><span id="kRoasMeta" style="display:none"></span>
-  </div>
+  </div><div class="pb-note" id="pbNote"></div>
 
   <div class="card">
     <h3><span class="dot"></span>Ritmo de inversión — por d&iacute;a<span class="r" id="chartR">&nbsp;</span></h3>
@@ -585,19 +579,7 @@ function renderSummary(grandSpent){
   const grandPlan=monthBudgetTotal(ym);
   const proj=dEl>0?grandSpent/dEl*dTot:0, ideal=grandPlan*tFrac;
   const roas=grandSpent>0?DATA.ga4.revenue/grandSpent:0, execPct=pct(grandSpent,grandPlan);
-  const bn=document.getElementById("paceBanner");let chip;
-  if(TARGET_INVEST<=0){bn.className="pace-banner on";chip="SIN OBJETIVO";
-    document.getElementById("pbMain").textContent="Cargá el plan por campaña para activar el pacing";
-    document.getElementById("pbSub").textContent=`Ejecutado a hoy: ${fmtMoney(grandSpent)} · ${dEl} de ${dTot} días`;
-  }else{const pv=pct(proj,TARGET_INVEST);const execO=pct(grandSpent,TARGET_INVEST);
-    if(pv>105){bn.className="pace-banner over";chip="SOBRE-PACING";}
-    else if(pv<95){bn.className="pace-banner under";chip="SUB-EJECUTADO";}
-    else{bn.className="pace-banner on";chip="EN RITMO";}
-    document.getElementById("pbMain").textContent=`${execO.toFixed(0)}% del objetivo ejecutado · proyección de cierre ${pv.toFixed(0)}% del objetivo`;
-    const diff=proj-TARGET_INVEST;
-    document.getElementById("pbSub").textContent=`${fmtMoney(grandSpent)} de ${fmtMoney(TARGET_INVEST)} · ${dEl}/${dTot} días · cierre estimado ${fmtMoney(proj)} (${diff>=0?"+":"-"}${fmtMoney(Math.abs(diff))})`;
-  }
-  document.getElementById("pbChip").textContent=chip;
+  const bn=document.getElementById("paceBanner");let chip,cls;const execPctO=pct(grandSpent,TARGET_INVEST);const timePct=tFrac*100;const pv=pct(proj,TARGET_INVEST);if(TARGET_INVEST<=0){cls="on";chip="SIN OBJETIVO";}else if(pv>105){cls="over";chip="SOBRE-PACING";}else if(pv<95){cls="under";chip="SUB-EJECUTADO";}else{cls="on";chip="EN RITMO";}bn.className="pace-banner "+cls;document.getElementById("pbPct").textContent=(TARGET_INVEST>0?execPctO.toFixed(0):"0")+"%";document.getElementById("pbFill").style.width=Math.min(Math.max(execPctO,0),100)+"%";document.getElementById("pbMarker").style.left=Math.min(Math.max(timePct,0),100)+"%";document.getElementById("pbCaption").innerHTML="D&Iacute;A "+dEl+" DE "+dTot+" &middot; transcurrido <strong>"+timePct.toFixed(0)+"%</strong> &middot; ejecutado <strong>"+execPctO.toFixed(0)+"%</strong>";document.getElementById("pbNote").innerHTML="&#9432; Proyecci&oacute;n de cierre estimada seg&uacute;n el ritmo de inversi&oacute;n al d&iacute;a "+dEl+". Puede variar seg&uacute;n optimizaciones futuras.";document.getElementById("pbChip").textContent=chip;
   document.getElementById("kTarget").textContent=fmtK(TARGET_INVEST);document.getElementById("kTargetMeta").innerHTML="&nbsp;";document.getElementById("kSpent").textContent=fmtK(grandSpent);
   document.getElementById("kSpentMeta").innerHTML=`<strong>${pct(grandSpent,TARGET_INVEST).toFixed(0)}%</strong> del objetivo · ${dEl}/${dTot} días`;
   document.getElementById("kBudget").textContent=fmtK(grandPlan);
