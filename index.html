@@ -354,7 +354,7 @@ const monthSel=document.getElementById("monthSel");
 (function(){const now=new Date();for(let i=0;i<12;i++){const d=new Date(now.getFullYear(),now.getMonth()-i,1);
   const v=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
   const l=d.toLocaleDateString("es-CL",{month:"long",year:"numeric"});
-  const o=document.createElement("option");o.value=v;o.textContent=l.charAt(0).toUpperCase()+l.slice(1);monthSel.appendChild(o);}})();
+  const o=document.createElement("option");o.value=v;o.textContent=(i===0)?"Mes actual":l.charAt(0).toUpperCase()+l.slice(1);monthSel.appendChild(o);}})();
 
 function monthBounds(ym){const[y,m]=ym.split("-").map(Number);
   const first=new Date(y,m-1,1),last=new Date(y,m,0),today=new Date();today.setHours(0,0,0,0);
@@ -485,7 +485,7 @@ async function loadData(){
       api("budgets_get",{month:monthSel.value})
     ]);
     const B={};(budRows||[]).forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});
-    BUDGETS=B; // plan mensual compartido del equipo (BigQuery)
+    if(Object.keys(B).length===0 && MB.isCur){const pd=new Date(MB.first.getFullYear(),MB.first.getMonth()-1,1);const prevYm=pd.getFullYear()+"-"+String(pd.getMonth()+1).padStart(2,"0");try{const prevRows=await api("budgets_get",{month:prevYm});if(prevRows&&prevRows.length){prevRows.forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});prevRows.forEach(r=>{setBudget(monthSel.value,r.platform,r.campaign,+r.amount||0);});}}catch(e){}}BUDGETS=B;
     const C={meta:[],gads:[]}, D={meta:{},gads:{}};
     camps.forEach(r=>{if(C[r.grp])C[r.grp].push({name:r.name,spend:+r.spend||0});});
     daily.forEach(r=>{if(D[r.grp])D[r.grp][r.date]=+r.spend||0;});
