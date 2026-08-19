@@ -598,7 +598,7 @@ function renderSummary(grandSpent){
     document.getElementById("pbSub").textContent=`${fmtMoney(grandSpent)} de ${fmtMoney(TARGET_INVEST)} · ${dEl}/${dTot} días · cierre estimado ${fmtMoney(proj)} (${diff>=0?"+":"-"}${fmtMoney(Math.abs(diff))})`;
   }
   document.getElementById("pbChip").textContent=chip;
-  document.getElementById("kTarget").textContent=fmtK(TARGET_INVEST);document.getElementById("kTargetMeta").innerHTML=`Pace ideal a hoy: <strong>${fmtK(TARGET_INVEST*tFrac)}</strong>`;document.getElementById("kSpent").textContent=fmtK(grandSpent);
+  document.getElementById("kTarget").textContent=fmtK(TARGET_INVEST);document.getElementById("kTargetMeta").innerHTML="&nbsp;";document.getElementById("kSpent").textContent=fmtK(grandSpent);
   document.getElementById("kSpentMeta").innerHTML=`<strong>${pct(grandSpent,TARGET_INVEST).toFixed(0)}%</strong> del objetivo · ${dEl}/${dTot} días`;
   document.getElementById("kBudget").textContent=fmtK(grandPlan);
   document.getElementById("kBudgetMeta").innerHTML=grandPlan>0?`Pace ideal a hoy: <strong>${fmtK(ideal)}</strong>`:"Sin plan cargado";
