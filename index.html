@@ -614,7 +614,7 @@ function drawChart(budTotal){
 const fmtInt=n=>(n==null||isNaN(n))?"—":Math.round(n).toLocaleString("es-CL");
 let RDATA=null, resultsInit=false, detailCharts={};
 const GROUPS={ga4:{label:"GA4",color:"#1689C0"},plat:{label:"Plataforma",color:"#A63D81"}};
-const GROUP_ORDER=["ga4","plat"];let activeGroups=new Set(["ga4"]);let hiddenMetrics=new Set();function activeMetrics(){return METRICS.filter(function(m){return m.grp==="solo"||(activeGroups.has(m.grp)&&!hiddenMetrics.has(m.k));});}
+const GROUP_ORDER=["ga4","plat"];let CURRENCY="USD";let activeGroups=new Set(["ga4"]);let hiddenMetrics=new Set();function activeMetrics(){return METRICS.filter(function(m){return m.grp==="solo"||(activeGroups.has(m.grp)&&!hiddenMetrics.has(m.k));});}
 const METRICS=[
   // Consumo (columna sola)
   {k:"cons",label:"Consumo",fmt:"money",grp:"solo"},
@@ -625,7 +625,7 @@ const METRICS=[
   {k:"cpaGA4",label:"CPA",fmt:"money",grp:"ga4"},
   {k:"cvr",label:"Tasa de Conversión",fmt:"pct",grp:"ga4"},
   {k:"sess",label:"Sesiones",fmt:"int",grp:"ga4"},
-  {k:"cpcGA4",label:"CPC",fmt:"money",grp:"ga4"},
+  {k:"cpcGA4",label:"CPC",fmt:"cpc",grp:"ga4"},
   // Plataforma
   {k:"factPlat",label:"Facturación",fmt:"money",grp:"plat"},
   {k:"roasPlat",label:"ROAS",fmt:"x",grp:"plat"},
@@ -640,7 +640,7 @@ const grpStartFor=arr=>arr.map((m,i)=>i>0&&m.grp!==arr[i-1].grp);
 function fmtMetric(v,fmt){if(v==null||isNaN(v))return"—";
   if(fmt==="money")return fmtK(v);if(fmt==="int")return Math.round(v).toLocaleString("es-CL");
   if(fmt==="pct")return v.toFixed(2)+"%";if(fmt==="x")return v.toFixed(2)+"x";
-  if(fmt==="num")return v.toFixed(2);return String(v);}
+  if(fmt==="cpc")return CURRENCY==="ARS"?"$"+Math.round(v).toLocaleString("es-CL"):"US$"+v.toFixed(2);if(fmt==="num")return v.toFixed(2);return String(v);}
 const rFrom=document.getElementById("rFrom"), rTo=document.getElementById("rTo");
 const isoD=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 
