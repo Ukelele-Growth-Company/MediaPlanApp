@@ -831,7 +831,7 @@ function buildChartBlock(wrapper,series,chartId){
   const agg={};["cons","imp","clk","ga4Rev","ga4Tx","sess","plRev","plTx"].forEach(k=>{agg[k]=series.reduce((s,d)=>s+(d[k]==null?0:d[k]),0);});
   let head=wrapper.querySelector(".metric-head");
   if(!head){head=document.createElement("div");head.className="metric-head";const mc=wrapper.querySelector(".mini-chart");mc.parentNode.insertBefore(head,mc);}
-  let sel=["cons"];
+  let sel=allMetrics.length?["cons"]:activeMetrics().map(function(m){return m.k;});
   function render(){
     if(detailCharts[chartId]){try{detailCharts[chartId].destroy();}catch(e){}}
     detailCharts[chartId]=drawMulti(canvas,series,sel);
@@ -874,7 +874,7 @@ async function toggleDetail(tr){
   const td=document.createElement("td");td.colSpan=NCOL;
   td.innerHTML=`<div class="chart-detail">
     <div class="lvl-label">Campaña · evolución diaria</div>
-    <div class="cblock camp-block">${pillsHtml()}<div class="sel-hint">Elegí una o varias métricas para compararlas en el gráfico.</div><div class="mini-chart"><canvas></canvas></div></div>
+    <div class="cblock camp-block"><div class="mini-chart"><canvas></canvas></div></div>
     <div class="ag-section">
       <div class="ag-title">Ad groups · click en uno para ver su evolución</div>
       <div class="ag-hold"><div class="loading"><div class="spinner"></div>Cargando ad groups…</div></div>
