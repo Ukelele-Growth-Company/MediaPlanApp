@@ -612,7 +612,7 @@ function drawChart(budTotal){
 
 // ===== RESULTADOS POR CAMPAÑA (tab 2) =====
 const fmtInt=n=>(n==null||isNaN(n))?"—":Math.round(n).toLocaleString("es-CL");
-let RDATA=null, resultsInit=false, detailCharts={};
+let RDATA=null, resultsInit=false, detailCharts={}, campCache={};
 const GROUPS={ga4:{label:"GA4",color:"#1689C0"},plat:{label:"Plataforma",color:"#A63D81"}};
 const GROUP_ORDER=["ga4","plat"];let CURRENCY="USD";let activeGroups=new Set(["ga4"]);let hiddenMetrics=new Set();function activeMetrics(){return METRICS.filter(function(m){return m.grp==="solo"?!hiddenMetrics.has(m.k):(activeGroups.has(m.grp)&&!hiddenMetrics.has(m.k));});}
 const METRICS=[
@@ -665,7 +665,7 @@ function genDemoResults(from,to){
   });
   return{meta:agg(DEMO_DEFS.meta),gads:agg(DEMO_DEFS.gads)};
 }
-async function loadResults(){
+async function loadResults(){campCache={};
   const from=rFrom.value,to=rTo.value;if(!from||!to)return;
   document.getElementById("rPeriodLbl").textContent=`${from} → ${to}`;
   if(DEMO){RDATA=genDemoResults(from,to);renderResults();return;}
@@ -888,7 +888,7 @@ async function toggleDetail(tr){
       series=demoCampDaily(def,rFrom.value,rTo.value);
       agList=demoAdgroups(def).map(a=>({name:a.name,row:aggRange(a),daily:()=>Promise.resolve(demoCampDaily(a,rFrom.value,rTo.value))}));
     }else{
-      const [s,ax]=await Promise.all([campDailyBQ(name),adSetsBQ(name)]);
+      let s,ax;if(campCache[key]){s=campCache[key].s;ax=campCache[key].ax;}else{var _r=await Promise.all([campDailyBQ(name),adSetsBQ(name)]);s=_r[0];ax=_r[1];campCache[key]={s:s,ax:ax};}
       series=s;
       agList=ax.map(a=>({name:a.name,row:a,daily:()=>adSetDailyBQ(name,a.name)}));
     }
@@ -951,7 +951,7 @@ function submitLogin(){const k=document.getElementById("loginKey").value.trim();
   localStorage.setItem("mp_app_key",k);document.getElementById("loginOv").hidden=true;
   DATA=null;RDATA=null;loadData();if(resultsInit)loadResults();}
 document.getElementById("loginBtn").addEventListener("click",submitLogin);
-document.getElementById("loginKey").addEventListener("keydown",e=>{if(e.key==="Enter")submitLogin();});function buildSrcUI(){var el=document.getElementById("srcToggle");if(!el)return;var h=`<span class="src-cap">Ver:</span><button class="msel-chip solo${hiddenMetrics.has("cons")?"":" active"}" data-mk="cons">Consumo</button><span class="src-cap" style="margin-left:6px">Fuentes:</span><button class="src-btn ga4${activeGroups.has("ga4")?" active":""}" data-grp="ga4">GA4</button><button class="src-btn plat${activeGroups.has("plat")?" active":""}" data-grp="plat">Plataforma</button>`;GROUP_ORDER.forEach(function(g){if(!activeGroups.has(g))return;h+=`<span class="msel msel-${g}"><span class="msel-lbl">${GROUPS[g].label}</span>`;METRICS.filter(function(m){return m.grp===g;}).forEach(function(m){h+=`<button class="msel-chip ${g}${hiddenMetrics.has(m.k)?"":" active"}" data-mk="${m.k}">${m.label}</button>`;});h+=`</span>`;});el.innerHTML=h;}function syncResults(){if(document.querySelector("#rBody tr.chart-row")){refreshOpenCharts();}else if(RDATA){renderResults();}}function refreshOpenCharts(){document.querySelectorAll("#rBody .cblock").forEach(function(w){if(w.__rerender)w.__rerender();});}var _st=document.getElementById("srcToggle");if(_st){_st.addEventListener("click",function(e){var src=e.target.closest(".src-btn");var mc=e.target.closest(".msel-chip");if(src){var g=src.dataset.grp;if(activeGroups.has(g))activeGroups.delete(g);else activeGroups.add(g);buildSrcUI();syncResults();}else if(mc){var k=mc.dataset.mk;if(hiddenMetrics.has(k))hiddenMetrics.delete(k);else hiddenMetrics.add(k);buildSrcUI();syncResults();}});buildSrcUI();}
+document.getElementById("loginKey").addEventListener("keydown",e=>{if(e.key==="Enter")submitLogin();});function buildSrcUI(){var el=document.getElementById("srcToggle");if(!el)return;var h=`<span class="src-cap">Ver:</span><button class="msel-chip solo${hiddenMetrics.has("cons")?"":" active"}" data-mk="cons">Consumo</button><span class="src-cap" style="margin-left:6px">Fuentes:</span><button class="src-btn ga4${activeGroups.has("ga4")?" active":""}" data-grp="ga4">GA4</button><button class="src-btn plat${activeGroups.has("plat")?" active":""}" data-grp="plat">Plataforma</button>`;GROUP_ORDER.forEach(function(g){if(!activeGroups.has(g))return;h+=`<span class="msel msel-${g}"><span class="msel-lbl">${GROUPS[g].label}</span>`;METRICS.filter(function(m){return m.grp===g;}).forEach(function(m){h+=`<button class="msel-chip ${g}${hiddenMetrics.has(m.k)?"":" active"}" data-mk="${m.k}">${m.label}</button>`;});h+=`</span>`;});el.innerHTML=h;}function syncResults(){if(!RDATA)return;var st=[];document.querySelectorAll("#rBody tr.camp-row.open").forEach(function(tr){var cr=tr.nextElementSibling,ags=[];if(cr&&cr.classList&&cr.classList.contains("chart-row")){cr.querySelectorAll(".ag-card.open").forEach(function(c){ags.push(c.dataset.i);});}st.push({plat:tr.dataset.plat,name:tr.dataset.name,ags:ags});});renderResults();if(st.length){(async function(){for(const s of st){var row=[...document.querySelectorAll("#rBody tr.camp-row.clickable")].find(function(tr){return tr.dataset.plat===s.plat&&tr.dataset.name===s.name;});if(!row)continue;await toggleDetail(row);var cr=row.nextElementSibling;if(cr&&s.ags.length){for(const i of s.ags){var card=[...cr.querySelectorAll(".ag-card")].find(function(c){return c.dataset.i===i;});if(card)card.querySelector(".ag-card-head").click();}}}})();}}function refreshOpenCharts(){document.querySelectorAll("#rBody .cblock").forEach(function(w){if(w.__rerender)w.__rerender();});}var _st=document.getElementById("srcToggle");if(_st){_st.addEventListener("click",function(e){var src=e.target.closest(".src-btn");var mc=e.target.closest(".msel-chip");if(src){var g=src.dataset.grp;if(activeGroups.has(g))activeGroups.delete(g);else activeGroups.add(g);buildSrcUI();syncResults();}else if(mc){var k=mc.dataset.mk;if(hiddenMetrics.has(k))hiddenMetrics.delete(k);else hiddenMetrics.add(k);buildSrcUI();syncResults();}});buildSrcUI();}
 
 MB=monthBounds(monthSel.value);
 document.getElementById("footPeriod").textContent=`${MB.start_date} → ${MB.end_date}`;
