@@ -272,12 +272,12 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
     <div class="card filters-card">
       <div class="filters-row">
         <div class="fgrp"><span class="mlabel">Desde</span><input type="date" id="rFrom"></div>
-        <div class="fgrp"><span class="mlabel">Hasta</span><input type="date" id="rTo"></div>
+        <div class="fgrp"><span class="mlabel">Hasta</span><input type="date" id="rTo"></div><label class="cmp-toggle"><input type="checkbox" id="cmpChk"> Comparar</label><span id="cmpDates" style="display:none"><span class="fgrp"><span class="mlabel">Comp. desde</span><input type="date" id="rFrom2"></span><span class="fgrp"><span class="mlabel">hasta</span><input type="date" id="rTo2"></span><button class="mini-btn" id="cmpOk">OK</button></span>
         <div class="presets">
           <button class="mini-btn preset" data-preset="today">Hoy</button>
           <button class="mini-btn preset" data-preset="yesterday">Ayer</button>
           <button class="mini-btn preset" data-preset="7d">Últimos 7 días</button>
-          <button class="mini-btn preset" data-preset="month">Mes actual</button><label class="cmp-toggle"><input type="checkbox" id="cmpChk"> Comparar</label><span id="cmpDates" style="display:none"><span class="fgrp"><span class="mlabel">Comp. desde</span><input type="date" id="rFrom2"></span><span class="fgrp"><span class="mlabel">hasta</span><input type="date" id="rTo2"></span></span>
+          <button class="mini-btn preset" data-preset="month">Mes actual</button>
         </div>
       </div>
     </div>
@@ -755,7 +755,7 @@ document.querySelectorAll(".preset").forEach(b=>b.addEventListener("click",()=>{
   rFrom.value=isoD(f);rTo.value=isoD(t2);setPreset(pr);loadResults();
 }));
 rFrom.addEventListener("change",()=>{setPreset(null);loadResults();});
-rTo.addEventListener("change",()=>{setPreset(null);loadResults();});(function(){var c=document.getElementById("cmpChk");if(c){c.addEventListener("change",function(){document.getElementById("cmpDates").style.display=c.checked?"":"none";if(c.checked&&rFrom2&&!rFrom2.value){var f=new Date(rFrom.value+"T00:00:00"),t=new Date(rTo.value+"T00:00:00"),len=Math.round((t-f)/86400000),pt=new Date(f);pt.setDate(pt.getDate()-1);var pf=new Date(pt);pf.setDate(pf.getDate()-len);rFrom2.value=isoD(pf);rTo2.value=isoD(pt);}loadResults();});}if(rFrom2)rFrom2.addEventListener("change",function(){loadResults();});if(rTo2)rTo2.addEventListener("change",function(){loadResults();});})();
+rTo.addEventListener("change",()=>{setPreset(null);loadResults();});(function(){var c=document.getElementById("cmpChk");if(c){c.addEventListener("change",function(){document.getElementById("cmpDates").style.display=c.checked?"":"none";if(c.checked&&rFrom2&&!rFrom2.value){var f=new Date(rFrom.value+"T00:00:00"),t=new Date(rTo.value+"T00:00:00"),len=Math.round((t-f)/86400000),pt=new Date(f);pt.setDate(pt.getDate()-1);var pf=new Date(pt);pf.setDate(pf.getDate()-len);rFrom2.value=isoD(pf);rTo2.value=isoD(pt);}loadResults();});}var ok=document.getElementById("cmpOk");if(ok)ok.addEventListener("click",function(){loadResults();});})();
 
 // ---- demo daily series per campaign (deterministic) ----
 function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
