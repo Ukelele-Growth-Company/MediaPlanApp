@@ -4,14 +4,16 @@
 const { BigQuery } = require('@google-cloud/bigquery');
 
 const PROJECT = process.env.GCP_PROJECT || 'gen-lang-client-0913063106';
-const CAMP = '`' + PROJECT + '.prune_cl.master_campaign_results`';
-const ADSET = '`' + PROJECT + '.prune_cl.master_ads_ad_results`';
-const BUD = '`' + PROJECT + '.prune_cl.media_plan_budgets`';
+const CAMP = '`' + PROJECT + '.__DS__.master_campaign_results`';
+const ADSET = '`' + PROJECT + '.__DS__.master_ads_ad_results`';
+const BUD = '`' + PROJECT + '.__DS__.media_plan_budgets`';
 const PLAT = "platform IN ('Facebook','Google')";
 const PCASE = "CASE platform WHEN 'Facebook' THEN 'meta' WHEN 'Google' THEN 'gads' END";
 
 // Whitelist de queries. El cliente NUNCA manda SQL: manda un "kind" + params.
 const QUERIES = {
+  clients: () => ({ query: "WITH spend AS (SELECT business_name AS ds, STRING_AGG(DISTINCT platform, ',' ORDER BY platform) AS platforms, MAX(date) AS last_date, ROUND(SUM(cost_converted),0) AS spend_90d FROM `" + PROJECT + ".cross_clients.complete_ads_report` WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 90 DAY) GROUP BY business_name), ai AS (SELECT client_normalized_name AS ds, ANY_VALUE(vertical) AS vertical, ANY_VALUE(ukelele_group) AS grp, LOGICAL_OR(NOT has_terminated) AS active FROM `" + PROJECT + ".cross_clients.accounts_info` GROUP BY client_normalized_name) SELECT s.ds AS client, s.platforms, s.last_date, s.spend_90d, ai.vertical AS vertical, ai.grp AS grp FROM spend s INNER JOIN ai ON s.ds = ai.ds WHERE s.spend_90d > 0 AND ai.active = TRUE ORDER BY vertical, s.spend_90d DESC", params: {} }),
+
   pacing_campaigns: p => ({
     query: `SELECT ${PCASE} grp, campaign_name name, SUM(cost_converted) spend
             FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to
@@ -114,7 +116,10 @@ module.exports = async (req, res) => {
     const builder = QUERIES[body.kind];
     if (!builder) { res.status(400).json({ error: 'kind invalido' }); return; }
     const { query, params, types } = builder(body.params || {});
-    const opts = { query, params, location: 'US' };
+    var __ds = (body.params && body.params.client) || 'prune_cl';
+    if (!/^[a-z0-9_]+$/.test(__ds)) { res.status(400).json({ error: 'client invalido' }); return; }
+    var __q = query.split('__DS__').join(__ds);
+    const opts = { query: __q, params, location: 'US' };
     if (types) opts.types = types;
     const [rows] = await client().query(opts);
     res.status(200).json({ rows });
