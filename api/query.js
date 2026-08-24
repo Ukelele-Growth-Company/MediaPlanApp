@@ -35,7 +35,7 @@ const QUERIES = {
               SUM(purchase_revenue_converted) ga4Rev, SUM(purchase) ga4Tx, SUM(session_start) sess,
               SUM(ads_purchase_revenue_converted) plRev, SUM(ads_purchase) plTx
             FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to
-            GROUP BY grp, name HAVING cons > 0 OR ga4Rev > 0 OR plRev > 0`,
+            GROUP BY grp, name HAVING cons > 0`,
     params: { from: p.from, to: p.to }
   }),
   camp_daily: p => ({
