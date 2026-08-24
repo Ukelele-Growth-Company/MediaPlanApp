@@ -121,7 +121,7 @@ module.exports = async (req, res) => {
     var __q = query.split('__DS__').join(__ds);
     const opts = { query: __q, params, location: 'US' };
     if (types) opts.types = types;
-    const [rows] = await client().query(opts);
+    let rows; try { const _r = await client().query(opts); rows = _r[0]; } catch(_e){ if(body.kind==='budgets_get'){ rows=[]; } else { throw _e; } }
     res.status(200).json({ rows });
   } catch (e) {
     res.status(500).json({ error: (e && e.message) || 'Error de query' });
