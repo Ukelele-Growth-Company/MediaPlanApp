@@ -64,7 +64,7 @@ const QUERIES = {
     params: { camp: p.camp, adset: p.adset, from: p.from, to: p.to }
   }),
   // --- plan mensual (presupuesto por campaña), compartido por todo el equipo ---
-  active_campaigns: p => ({ query: `SELECT DISTINCT ${PCASE} grp, campaign_name name FROM ${CAMP} WHERE ${PLAT} AND cost_converted>0 AND date=(SELECT MAX(date) FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to)`, params: { from: p.from, to: p.to } }), active_adsets: p => ({ query: `SELECT DISTINCT ad_set_name name FROM ${ADSET} WHERE campaign_name=@name AND cost_converted>0 AND date=(SELECT MAX(date) FROM ${ADSET} WHERE campaign_name=@name AND date BETWEEN @from AND @to)`, params: { name: p.name, from: p.from, to: p.to } }), budgets_get: p => ({
+  active_campaigns: p => ({ query: `WITH mx AS (SELECT MAX(date) d FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to) SELECT DISTINCT ${PCASE} grp, campaign_name name FROM ${CAMP}, mx WHERE ${PLAT} AND cost_converted>0 AND date=mx.d`, params: { from: p.from, to: p.to } }), active_adsets: p => ({ query: `WITH mx AS (SELECT MAX(date) d FROM ${ADSET} WHERE campaign_name=@name AND date BETWEEN @from AND @to) SELECT DISTINCT ad_set_name name FROM ${ADSET}, mx WHERE campaign_name=@name AND cost_converted>0 AND date=mx.d`, params: { name: p.name, from: p.from, to: p.to } }), budgets_get: p => ({
     query: `SELECT platform, campaign, amount FROM ${BUD} WHERE month = @month`,
     params: { month: p.month }
   }),
