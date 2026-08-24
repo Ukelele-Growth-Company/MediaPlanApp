@@ -442,8 +442,8 @@ async function campDailyBQ(name){
     ga4Rev:+r.ga4Rev||0, ga4Tx:+r.ga4Tx||0, sess:+r.sess||0, plRev:+r.plRev||0, plTx:+r.plTx||0}));
 }
 // Ad sets (ad groups) agregados de una campaña — sólo métricas de plataforma (GA4 no existe a nivel ad set)
-async function adSetsBQ(name){
-  const rows=await api("adsets",{name,from:rFrom.value,to:rTo.value});
+async function adSetsBQ(name,from,to){from=from||rFrom.value;to=to||rTo.value;
+  const rows=await api("adsets",{name,from:from,to:to});
   return rows.map(r=>({name:r.name||"(sin nombre)", cons:+r.cons||0, imp:+r.imp||0, clk:+r.clk||0,
     ga4Rev:null, ga4Tx:null, sess:null, plRev:+r.plRev||0, plTx:+r.plTx||0}));
 }
@@ -635,7 +635,7 @@ const METRICS=[
   {k:"ctr",label:"CTR",fmt:"pct",grp:"plat"}
 ];
 // Ad set / ad group: GA4 no existe a ese nivel -> sólo Consumo + Plataforma
-const AG_METRICS=METRICS.filter(m=>m.grp!=="ga4");const METRIC_DIR={cons:0,factGA4:1,factPlat:1,roasGA:1,roasPlat:1,txGA4:1,txPlat:1,sess:1,cvr:1,ctr:1,cpaGA4:-1,cpaPlat:-1,cpcGA4:-1,cpm:-1};function deltaHtml(r,k){if(!COMPARE||!r||!r.__cmp)return"";var cur=metricVal(r,k),prev=metricVal(r.__cmp,k);if(cur==null||prev==null||!isFinite(prev)||prev===0)return"";var d=(cur-prev)/Math.abs(prev)*100;if(!isFinite(d))return"";var up=cur>prev,dir=METRIC_DIR[k]||0,small=Math.abs(d)<0.5;var good=dir===0?0:((up&&dir>0)||(!up&&dir<0)?1:-1);var col=good>0?"#1d9e75":(good<0?"#e24b4a":"#888");var ar=small?"":(up?"&#9650; ":"&#9660; ");return `<div style="font-size:10.5px;margin-top:1px;color:${col}">${ar}${Math.abs(d).toFixed(0)}%</div>`;}
+const AG_METRICS=METRICS.filter(m=>m.grp!=="ga4");const METRIC_DIR={cons:0,factGA4:1,factPlat:1,roasGA:1,roasPlat:1,txGA4:1,txPlat:1,sess:1,cvr:1,ctr:1,cpaGA4:-1,cpaPlat:-1,cpcGA4:-1,cpm:-1};function agDeltaHtml(a,k){if(!COMPARE||!a||!a.row2)return"";var cur=metricVal(a.row,k),prev=metricVal(a.row2,k);if(cur==null||prev==null||!isFinite(prev)||prev===0)return"";var d=(cur-prev)/Math.abs(prev)*100;if(!isFinite(d))return"";var up=cur>prev,dir=METRIC_DIR[k]||0,small=Math.abs(d)<0.5;var good=dir===0?0:((up&&dir>0)||(!up&&dir<0)?1:-1);var col=good>0?"#1d9e75":(good<0?"#e24b4a":"#888");var ar=small?"":(up?"&#9650;":"&#9660;");return ` <span style="font-size:10px;color:${col}">${ar}${Math.abs(d).toFixed(0)}%</span>`;}function deltaHtml(r,k){if(!COMPARE||!r||!r.__cmp)return"";var cur=metricVal(r,k),prev=metricVal(r.__cmp,k);if(cur==null||prev==null||!isFinite(prev)||prev===0)return"";var d=(cur-prev)/Math.abs(prev)*100;if(!isFinite(d))return"";var up=cur>prev,dir=METRIC_DIR[k]||0,small=Math.abs(d)<0.5;var good=dir===0?0:((up&&dir>0)||(!up&&dir<0)?1:-1);var col=good>0?"#1d9e75":(good<0?"#e24b4a":"#888");var ar=small?"":(up?"&#9650; ":"&#9660; ");return `<div style="font-size:10.5px;margin-top:1px;color:${col}">${ar}${Math.abs(d).toFixed(0)}%</div>`;}
 const grpStartFor=arr=>arr.map((m,i)=>i>0&&m.grp!==arr[i-1].grp);
 function fmtMetric(v,fmt){if(v==null||isNaN(v))return"—";
   if(fmt==="money")return fmtK(v);if(fmt==="int")return Math.round(v).toLocaleString("es-CL");
@@ -890,15 +890,15 @@ async function toggleDetail(tr){
     }else{
       let s,ax;if(campCache[key]){s=campCache[key].s;ax=campCache[key].ax;}else{var _r=await Promise.all([campDailyBQ(name),adSetsBQ(name)]);s=_r[0];ax=_r[1];campCache[key]={s:s,ax:ax};}
       series=s;
-      agList=ax.map(a=>({name:a.name,row:a,daily:()=>adSetDailyBQ(name,a.name)}));
+      agList=ax.map(a=>({name:a.name,row:a,daily:()=>adSetDailyBQ(name,a.name)}));if(COMPARE&&rFrom2&&rFrom2.value&&rTo2&&rTo2.value){try{var ax2=(campCache[key]&&campCache[key].ax2)?campCache[key].ax2:await adSetsBQ(name,rFrom2.value,rTo2.value);if(campCache[key])campCache[key].ax2=ax2;var m2={};ax2.forEach(function(x){m2[x.name]=x;});agList.forEach(function(a){a.row2=m2[a.name]||null;});}catch(e){}}
     }
     buildChartBlock(td.querySelector(".camp-block"),series,key+"::c");
     const hold=td.querySelector(".ag-hold");
     if(!agList.length){hold.innerHTML=`<div class="hint" style="padding:6px 2px">Sin ad groups con inversión en el período.</div>`;}
     else{
-      const km=[["Consumo","cons"],["Fact. Plat.","factPlat"],["ROAS","roasPlat"],["CPA","cpaPlat"]];
+      const km=[["Consumo","cons"],["Facturaci&oacute;n","factPlat"],["ROAS","roasPlat"],["CPA","cpaPlat"],["CPM","cpm"],["CTR","ctr"]];
       const cardsHtml=agList.map((a,i)=>{
-        const mini=km.map(([lbl,k])=>`<span class="agm"><em>${lbl}</em>${fmtMetric(metricVal(a.row,k),METRICS.find(m=>m.k===k).fmt)}</span>`).join("");
+        const mini=km.map(([lbl,k])=>`<span class="agm"><em>${lbl}</em>${fmtMetric(metricVal(a.row,k),METRICS.find(m=>m.k===k).fmt)}${agDeltaHtml(a,k)}</span>`).join("");
         return `<div class="ag-card" data-i="${i}"><div class="ag-card-head"><span class="caret"></span><span class="ag-name">${a.name}</span><span class="ag-mini">${mini}</span></div><div class="ag-card-body" hidden></div></div>`;
       }).join("");
       hold.innerHTML=`<div class="ag-cards">${cardsHtml}</div><div class="hint" style="margin-top:8px">Métricas de plataforma (Meta / Google Ads). GA4 se mide a nivel campaña, no por ad set.</div>`;
