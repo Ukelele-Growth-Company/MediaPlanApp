@@ -102,6 +102,8 @@ input[type=date]:focus{outline:none;border-color:var(--uke-rojo)}
 #tabResults tbody tr.grp-row td{position:static}
 #tabResults tbody tr.grp-row.meta td{background:var(--uke-rojo)}
 #tabResults tbody tr.grp-row.gads td{background:var(--uke-azul-medio)}
+#tabResults tbody tr.grp-row.ttk td{background:#111}
+#tabResults tbody tr.grp-row.pin td{background:#E60023}
 .mini-chart.sm{height:180px}
 .lvl-label{font-family:var(--font-d);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--uke-gris-cuerpo);margin-bottom:8px}
 .ag-section{margin-top:16px;border-top:1px dashed var(--uke-gris-suave);padding-top:12px}
@@ -175,6 +177,8 @@ thead th{background:var(--uke-azul-oscuro);color:#fff;font-family:var(--font-d);
 thead th:first-child{text-align:left}
 tbody td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--uke-gris-suave);white-space:nowrap}
 tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
+.grp-row.ttk td{background:#111}
+.grp-row.pin td{background:#E60023}
 .grp-row td{background:var(--uke-negro);color:#fff;font-family:var(--font-d);font-weight:800;text-transform:uppercase;font-size:12px;letter-spacing:.05em;padding:9px 10px}
 .grp-row.meta td{background:var(--uke-rojo)}
 .grp-row.gads td{background:var(--uke-azul-medio)}
@@ -348,7 +352,9 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
 const LS_PREFIX="mp_prune_cl_v2_"; const TARGET_INVEST=11000;
 const PLATFORMS=[
   {key:"meta", label:"Meta Ads",   color:"#E30233"},
-  {key:"gads", label:"Google Ads", color:"#1689C0"}
+  {key:"gads", label:"Google Ads", color:"#1689C0"},
+  {key:"ttk", label:"TikTok", color:"#111111"},
+  {key:"pin", label:"Pinterest", color:"#E60023"}
 ];
 // ---- Backend API (BigQuery via /api/query) ----
 let CURRENT_CLIENT=null;
@@ -447,7 +453,7 @@ const DEMO_DEFS={
 function generateDemo(){
   const dEl=MB.daysElapsed, tFrac=MB.daysInMonth>0?dEl/MB.daysInMonth:0, ym=monthSel.value;
   const iso=d=>MB.first.getFullYear()+"-"+String(MB.first.getMonth()+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
-  const camps={meta:[],gads:[]}, daily={meta:{},gads:{}};
+  const camps={meta:[],gads:[],ttk:[],pin:[]}, daily={meta:{},gads:{},ttk:{},pin:{}};
   ["meta","gads"].forEach(k=>{
     DEMO_DEFS[k].forEach(c=>{
       const spend=Math.round(c.plan*tFrac*c.ratio);
@@ -510,7 +516,7 @@ async function loadData(){if(!CURRENT_CLIENT){return;}
     ]);
     const B={};(budRows||[]).forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});
     if(Object.keys(B).length===0 && MB.isCur){const pd=new Date(MB.first.getFullYear(),MB.first.getMonth()-1,1);const prevYm=pd.getFullYear()+"-"+String(pd.getMonth()+1).padStart(2,"0");try{const prevRows=await api("budgets_get",{month:prevYm});if(prevRows&&prevRows.length){prevRows.forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});prevRows.forEach(r=>{setBudget(monthSel.value,r.platform,r.campaign,+r.amount||0);});}}catch(e){}}BUDGETS=B;
-    ACTIVE_CP=new Set((actC||[]).map(function(r){return r.grp+"|"+r.name;}));const C={meta:[],gads:[]}, D={meta:{},gads:{}};
+    ACTIVE_CP=new Set((actC||[]).map(function(r){return r.grp+"|"+r.name;}));const C={meta:[],gads:[],ttk:[],pin:[]}, D={meta:{},gads:{},ttk:{},pin:{}};
     camps.forEach(r=>{if(C[r.grp])C[r.grp].push({name:r.name,spend:+r.spend||0});});
     daily.forEach(r=>{if(D[r.grp])D[r.grp][r.date]=+r.spend||0;});
     const g=ga4[0]||{};
@@ -541,7 +547,7 @@ function render(){
   PLATFORMS.forEach(p=>{
     const camps=(DATA.camps[p.key]||[]).slice().sort((a,b)=>b.spend-a.spend);
     const platSpent=camps.reduce((s,c)=>s+c.spend,0); grandSpent+=platSpent;
-    const platPlan=platBudgetTotal(ym,p.key);
+    const platPlan=platBudgetTotal(ym,p.key); if(!camps.length&&platPlan===0){return;}
     // group header
     const gr=document.createElement("tr");gr.className="grp-row "+p.key;
     gr.innerHTML=`<td colspan="6">${p.label}</td>`;body.appendChild(gr);
@@ -702,9 +708,9 @@ async function loadResults(){if(!CURRENT_CLIENT){return;}campCache={};COMPARE=!!
   document.getElementById("rBody").innerHTML=`<tr><td colspan="15"><div class="loading"><div class="spinner"></div>Consultando prune_cl…</div></td></tr>`;
   try{
     const rows=await api("results",{from,to});try{var actC=await api("active_campaigns",{from,to});ACTIVE_CR=new Set((actC||[]).map(function(r){return r.grp+"|"+r.name;}));}catch(e){ACTIVE_CR=new Set();}
-    const R={meta:[],gads:[]};
+    const R={meta:[],gads:[],ttk:[],pin:[]};
     rows.forEach(r=>{if(R[r.grp])R[r.grp].push(numify(r));});
-    RDATA=R;CMP=null;CMP_SUB=null;CMP_T=null;if(COMPARE&&rFrom2&&rFrom2.value&&rTo2&&rTo2.value){try{const rows2=await api("results",{from:rFrom2.value,to:rTo2.value});const R2={meta:{},gads:{}},SUB={},TT={};BASE_FIELDS.forEach(k=>TT[k]=0);PLATFORMS.forEach(p=>{SUB[p.key]={};BASE_FIELDS.forEach(k=>SUB[p.key][k]=0);});rows2.forEach(r=>{if(R2[r.grp]){const o=numify(r);R2[r.grp][o.name]=o;BASE_FIELDS.forEach(k=>{SUB[r.grp][k]+=(o[k]||0);TT[k]+=(o[k]||0);});}});CMP=R2;CMP_SUB=SUB;CMP_T=TT;}catch(e){}}renderResults();
+    RDATA=R;CMP=null;CMP_SUB=null;CMP_T=null;if(COMPARE&&rFrom2&&rFrom2.value&&rTo2&&rTo2.value){try{const rows2=await api("results",{from:rFrom2.value,to:rTo2.value});const R2={meta:{},gads:{},ttk:{},pin:{}},SUB={},TT={};BASE_FIELDS.forEach(k=>TT[k]=0);PLATFORMS.forEach(p=>{SUB[p.key]={};BASE_FIELDS.forEach(k=>SUB[p.key][k]=0);});rows2.forEach(r=>{if(R2[r.grp]){const o=numify(r);R2[r.grp][o.name]=o;BASE_FIELDS.forEach(k=>{SUB[r.grp][k]+=(o[k]||0);TT[k]+=(o[k]||0);});}});CMP=R2;CMP_SUB=SUB;CMP_T=TT;}catch(e){}}renderResults();
   }catch(e){document.getElementById("rBody").innerHTML=`<tr><td colspan="15"><div class="errbox">${e.message||"Error al consultar."} — probá recargar.</div></td></tr>`;}
 }
 function resRow(r,platKey,strong,grand){
@@ -738,7 +744,7 @@ function renderResults(){
   const showAll=false,body=document.getElementById("rBody");body.innerHTML="";
   const T={name:"TOTAL"};BASE_FIELDS.forEach(k=>T[k]=0);
   PLATFORMS.forEach(p=>{
-    const rows=(RDATA[p.key]||[]).slice().sort((a,b)=>(b.cons||0)-(a.cons||0));
+    const rows=(RDATA[p.key]||[]).slice().sort((a,b)=>(b.cons||0)-(a.cons||0)); if(!rows.length){return;}
     const S={name:"Subtotal "+p.label};BASE_FIELDS.forEach(k=>S[k]=0);
     rows.forEach(r=>BASE_FIELDS.forEach(k=>S[k]+=r[k]||0));
     BASE_FIELDS.forEach(k=>T[k]+=S[k]);
