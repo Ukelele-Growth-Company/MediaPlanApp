@@ -12,61 +12,62 @@ const PCASE = "CASE platform WHEN 'Facebook' THEN 'meta' WHEN 'Google' THEN 'gad
 
 // Whitelist de queries. El cliente NUNCA manda SQL: manda un "kind" + params.
 const QUERIES = {
+  currency: () => ({ query: "SELECT CASE WHEN ABS(SUM(cost)-SUM(cost_raw))<=ABS(SUM(cost)-SUM(cost_converted)) THEN UPPER(MAX(account_currency)) ELSE UPPER(MAX(ads_conversion_currency)) END AS ccy FROM " + CAMP + " WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 90 DAY)", params: {} }),
   clients: () => ({ query: "WITH spend AS (SELECT business_name AS ds, STRING_AGG(DISTINCT platform, ',' ORDER BY platform) AS platforms, MAX(date) AS last_date, ROUND(SUM(cost_converted),0) AS spend_90d FROM `" + PROJECT + ".cross_clients.complete_ads_report` WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 90 DAY) GROUP BY business_name), ai AS (SELECT client_normalized_name AS ds, ANY_VALUE(vertical) AS vertical, ANY_VALUE(ukelele_group) AS grp, LOGICAL_OR(NOT has_terminated) AS active FROM `" + PROJECT + ".cross_clients.accounts_info` GROUP BY client_normalized_name) SELECT s.ds AS client, s.platforms, s.last_date, s.spend_90d, ai.vertical AS vertical, ai.grp AS grp FROM spend s INNER JOIN ai ON s.ds = ai.ds WHERE s.spend_90d > 0 AND ai.active = TRUE ORDER BY vertical, s.spend_90d DESC", params: {} }),
 
   pacing_campaigns: p => ({
-    query: `SELECT ${PCASE} grp, campaign_name name, SUM(cost_converted) spend
+    query: `SELECT ${PCASE} grp, campaign_name name, SUM(cost) spend
             FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to
             GROUP BY grp, name HAVING spend > 0`,
     params: { from: p.from, to: p.to }
   }),
   pacing_daily: p => ({
-    query: `SELECT CAST(date AS STRING) date, ${PCASE} grp, SUM(cost_converted) spend
+    query: `SELECT CAST(date AS STRING) date, ${PCASE} grp, SUM(cost) spend
             FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to
             GROUP BY date, grp`,
     params: { from: p.from, to: p.to }
   }),
   ga4_totals: p => ({
-    query: `SELECT SUM(purchase_revenue_converted) rev, SUM(purchase) tx, SUM(session_start) sess
+    query: `SELECT SUM(purchase_revenue) rev, SUM(purchase) tx, SUM(session_start) sess
             FROM ${CAMP} WHERE date BETWEEN @from AND @to`,
     params: { from: p.from, to: p.to }
   }),
   results: p => ({
     query: `SELECT ${PCASE} grp, campaign_name name,
-              SUM(cost_converted) cons, SUM(impressions) imp, SUM(clicks) clk,
-              SUM(purchase_revenue_converted) ga4Rev, SUM(purchase) ga4Tx, SUM(session_start) sess,
-              SUM(ads_purchase_revenue_converted) plRev, SUM(ads_purchase) plTx
+              SUM(cost) cons, SUM(impressions) imp, SUM(clicks) clk,
+              SUM(purchase_revenue) ga4Rev, SUM(purchase) ga4Tx, SUM(session_start) sess,
+              SUM(ads_purchase_revenue) plRev, SUM(ads_purchase) plTx
             FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to
             GROUP BY grp, name HAVING cons > 0`,
     params: { from: p.from, to: p.to }
   }),
   camp_daily: p => ({
     query: `SELECT CAST(date AS STRING) date,
-              SUM(cost_converted) cons, SUM(impressions) imp, SUM(clicks) clk,
-              SUM(purchase_revenue_converted) ga4Rev, SUM(purchase) ga4Tx, SUM(session_start) sess,
-              SUM(ads_purchase_revenue_converted) plRev, SUM(ads_purchase) plTx
+              SUM(cost) cons, SUM(impressions) imp, SUM(clicks) clk,
+              SUM(purchase_revenue) ga4Rev, SUM(purchase) ga4Tx, SUM(session_start) sess,
+              SUM(ads_purchase_revenue) plRev, SUM(ads_purchase) plTx
             FROM ${CAMP} WHERE campaign_name = @name AND ${PLAT} AND date BETWEEN @from AND @to
             GROUP BY date ORDER BY date`,
     params: { name: p.name, from: p.from, to: p.to }
   }),
   adsets: p => ({
     query: `SELECT ad_set_name name,
-              SUM(cost_converted) cons, SUM(impressions) imp, SUM(clicks) clk,
-              SUM(ads_purchase_revenue_converted) plRev, SUM(ads_purchase) plTx
+              SUM(cost) cons, SUM(impressions) imp, SUM(clicks) clk,
+              SUM(ads_purchase_revenue) plRev, SUM(ads_purchase) plTx
             FROM ${ADSET} WHERE campaign_name = @name AND date BETWEEN @from AND @to
             GROUP BY ad_set_name HAVING cons > 0 ORDER BY cons DESC`,
     params: { name: p.name, from: p.from, to: p.to }
   }),
   adset_daily: p => ({
     query: `SELECT CAST(date AS STRING) date,
-              SUM(cost_converted) cons, SUM(impressions) imp, SUM(clicks) clk,
-              SUM(ads_purchase_revenue_converted) plRev, SUM(ads_purchase) plTx
+              SUM(cost) cons, SUM(impressions) imp, SUM(clicks) clk,
+              SUM(ads_purchase_revenue) plRev, SUM(ads_purchase) plTx
             FROM ${ADSET} WHERE campaign_name = @camp AND ad_set_name = @adset AND date BETWEEN @from AND @to
             GROUP BY date ORDER BY date`,
     params: { camp: p.camp, adset: p.adset, from: p.from, to: p.to }
   }),
   // --- plan mensual (presupuesto por campaña), compartido por todo el equipo ---
-  active_campaigns: p => ({ query: `WITH mx AS (SELECT platform p, MAX(date) d FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to GROUP BY platform) SELECT DISTINCT ${PCASE} grp, campaign_name name FROM ${CAMP} JOIN mx ON platform=mx.p AND date=mx.d WHERE cost_converted>0`, params: { from: p.from, to: p.to } }), active_adsets: p => ({ query: `WITH mx AS (SELECT MAX(date) d FROM ${ADSET} WHERE campaign_name=@name AND date BETWEEN @from AND @to) SELECT DISTINCT ad_set_name name FROM ${ADSET}, mx WHERE campaign_name=@name AND cost_converted>0 AND date=mx.d`, params: { name: p.name, from: p.from, to: p.to } }), budgets_get: p => ({
+  active_campaigns: p => ({ query: `WITH mx AS (SELECT platform p, MAX(date) d FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to GROUP BY platform) SELECT DISTINCT ${PCASE} grp, campaign_name name FROM ${CAMP} JOIN mx ON platform=mx.p AND date=mx.d WHERE cost>0`, params: { from: p.from, to: p.to } }), active_adsets: p => ({ query: `WITH mx AS (SELECT MAX(date) d FROM ${ADSET} WHERE campaign_name=@name AND date BETWEEN @from AND @to) SELECT DISTINCT ad_set_name name FROM ${ADSET}, mx WHERE campaign_name=@name AND cost>0 AND date=mx.d`, params: { name: p.name, from: p.from, to: p.to } }), budgets_get: p => ({
     query: `SELECT platform, campaign, amount FROM ${BUD} WHERE month = @month`,
     params: { month: p.month }
   }),
