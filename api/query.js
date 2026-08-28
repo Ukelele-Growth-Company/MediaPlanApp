@@ -7,8 +7,8 @@ const PROJECT = process.env.GCP_PROJECT || 'gen-lang-client-0913063106';
 const CAMP = '`' + PROJECT + '.__DS__.master_campaign_results`';
 const ADSET = '`' + PROJECT + '.__DS__.master_ads_ad_results`';
 const BUD = '`' + PROJECT + '.__DS__.media_plan_budgets`';
-const PLAT = "platform IN ('Facebook','Google')";
-const PCASE = "CASE platform WHEN 'Facebook' THEN 'meta' WHEN 'Google' THEN 'gads' END";
+const PLAT = "platform IN ('Facebook','Google','TikTok','Pinterest')";
+const PCASE = "CASE platform WHEN 'Facebook' THEN 'meta' WHEN 'Google' THEN 'gads' WHEN 'TikTok' THEN 'ttk' WHEN 'Pinterest' THEN 'pin' END";
 
 // Whitelist de queries. El cliente NUNCA manda SQL: manda un "kind" + params.
 const QUERIES = {
