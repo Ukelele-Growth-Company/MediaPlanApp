@@ -274,7 +274,7 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
   <div id="paceBanner" class="pace-banner on"><span id="pbMain" style="display:none"></span><span id="pbSub" style="display:none"></span><div class="pb-left"><div class="pb-label">Ejecuci&oacute;n del plan</div><div class="pb-big"><span id="pbPct">&mdash;</span></div><div class="pb-sublabel">del objetivo ejecutado</div></div><div class="pb-mid"><div class="pb-caption" id="pbCaption">&nbsp;</div><div class="pb-bar"><div class="pb-bar-fill" id="pbFill"></div><div class="pb-bar-marker" id="pbMarker" title="Hoy"></div></div></div><div class="pace-chip" id="pbChip">&mdash;</div></div>
 
   <div class="kpis">
-    <div class="kpi"><div class="lbl">Inversi&oacute;n objetivo</div><div class="val"><span id="kTargetSym"></span><input id="kTargetInput" inputmode="numeric" autocomplete="off" placeholder="-" onchange="saveTarget(this.value)" onkeydown="if(event.key==='Enter'){this.blur();}" style="border:none;border-bottom:1px dashed #bbb;background:transparent;font:inherit;color:inherit;width:13ch;font-size:.72em;padding:0;outline:none" /></div><div class="meta" id="kTargetMeta">Por conectar</div></div>
+    <div class="kpi"><div class="lbl">Inversi&oacute;n objetivo</div><div class="val"><span id="kTargetSym"></span><input id="kTargetInput" inputmode="numeric" autocomplete="off" placeholder="-" onchange="saveTarget(this.value)" onkeydown="if(event.key==='Enter'){this.blur();}" style="border:none;border-bottom:1px dashed #bbb;background:transparent;font:inherit;color:inherit;width:13ch;padding:0;outline:none" /></div><div class="meta" id="kTargetMeta">Por conectar</div></div>
     <div class="kpi b2"><div class="lbl">Inversi&oacute;n ejecutada</div><div class="val" id="kSpent">-</div><div class="meta" id="kSpentMeta">&nbsp;</div></div>
     <span id="kBudget" style="display:none"></span><span id="kBudgetMeta" style="display:none"></span>
     <div class="kpi b3"><div class="lbl">Proyección de cierre</div><div class="val" id="kProj">—</div><div class="meta" id="kProjMeta">&nbsp;</div></div>
@@ -372,11 +372,8 @@ const numify=r=>({name:r.name, cons:+r.cons||0, imp:+r.imp||0, clk:+r.clk||0,
   ga4Rev:(r.ga4Rev==null?null:+r.ga4Rev), ga4Tx:(r.ga4Tx==null?null:+r.ga4Tx), sess:(r.sess==null?null:+r.sess),
   plRev:+r.plRev||0, plTx:+r.plTx||0});
 
-const fmtMoney=n=>(n==null||isNaN(n))?"—":MONEY_SYM+Math.round(n).toLocaleString("en-US");
-const fmtK=n=>{if(n==null||isNaN(n))return"—";
-  if(Math.abs(n)>=1e6)return MONEY_SYM+(n/1e6).toLocaleString("en-US",{maximumFractionDigits:1})+"M";
-  if(Math.abs(n)>=1e3)return MONEY_SYM+(n/1e3).toLocaleString("en-US",{minimumFractionDigits:1,maximumFractionDigits:1})+"K";
-  return MONEY_SYM+Math.round(n).toLocaleString("en-US");};
+const fmtMoney=n=>(n==null||isNaN(n))?"—":MONEY_SYM+" "+Math.round(n).toLocaleString("es-AR");
+const fmtK=n=>(n==null||isNaN(n))?"—":MONEY_SYM+" "+Math.round(n).toLocaleString("es-AR");
 const pct=(a,b)=>b>0?a/b*100:0;
 
 // ---- months ----
