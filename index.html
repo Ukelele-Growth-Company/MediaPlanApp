@@ -372,11 +372,11 @@ const numify=r=>({name:r.name, cons:+r.cons||0, imp:+r.imp||0, clk:+r.clk||0,
   ga4Rev:(r.ga4Rev==null?null:+r.ga4Rev), ga4Tx:(r.ga4Tx==null?null:+r.ga4Tx), sess:(r.sess==null?null:+r.sess),
   plRev:+r.plRev||0, plTx:+r.plTx||0});
 
-const fmtMoney=n=>(n==null||isNaN(n))?"—":"US$"+Math.round(n).toLocaleString("en-US");
+const fmtMoney=n=>(n==null||isNaN(n))?"—":MONEY_SYM+Math.round(n).toLocaleString("en-US");
 const fmtK=n=>{if(n==null||isNaN(n))return"—";
-  if(Math.abs(n)>=1e6)return"US$"+(n/1e6).toLocaleString("en-US",{maximumFractionDigits:1})+"M";
-  if(Math.abs(n)>=1e3)return"US$"+(n/1e3).toLocaleString("en-US",{minimumFractionDigits:1,maximumFractionDigits:1})+"K";
-  return"US$"+Math.round(n).toLocaleString("en-US");};
+  if(Math.abs(n)>=1e6)returnMONEY_SYM+(n/1e6).toLocaleString("en-US",{maximumFractionDigits:1})+"M";
+  if(Math.abs(n)>=1e3)returnMONEY_SYM+(n/1e3).toLocaleString("en-US",{minimumFractionDigits:1,maximumFractionDigits:1})+"K";
+  returnMONEY_SYM+Math.round(n).toLocaleString("en-US");};
 const pct=(a,b)=>b>0?a/b*100:0;
 
 // ---- months ----
@@ -640,9 +640,9 @@ function drawChart(budTotal){
   const cfg={type:"line",data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,
     interaction:{mode:"index",intersect:false},
     plugins:{legend:{labels:{font:{family:"Montserrat",size:11},usePointStyle:true,pointStyle:"line",boxWidth:26}},
-      tooltip:{callbacks:{title:i=>"Día "+i[0].label,label:it=>it.dataset.label+": "+(it.parsed.y==null?"—":"$"+Math.round(it.parsed.y).toLocaleString("es-CL"))}}},
+      tooltip:{callbacks:{title:i=>"Día "+i[0].label,label:it=>it.dataset.label+": "+(it.parsed.y==null?"—":MONEY_SYM+Math.round(it.parsed.y).toLocaleString("es-CL"))}}},
     scales:{x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:12,font:{size:10}}},
-      y:{grid:{color:"#EEE"},ticks:{font:{size:10},callback:v=>v>=1e6?"$"+(v/1e6).toFixed(1)+"M":v>=1e3?"$"+(v/1e3).toFixed(0)+"K":"$"+v}}}}};
+      y:{grid:{color:"#EEE"},ticks:{font:{size:10},callback:v=>v>=1e6?MONEY_SYM+(v/1e6).toFixed(1)+"M":v>=1e3?MONEY_SYM+(v/1e3).toFixed(0)+"K":MONEY_SYM+v}}}}};
   if(chart){chart.data=cfg.data;chart.options=cfg.options;chart.update();}else chart=new Chart(document.getElementById("paceChart"),cfg);
 }
 
@@ -650,7 +650,7 @@ function drawChart(budTotal){
 const fmtInt=n=>(n==null||isNaN(n))?"—":Math.round(n).toLocaleString("es-CL");
 let RDATA=null, resultsInit=false, detailCharts={}, campCache={}, COMPARE=false, CMP=null, CMP_SUB=null, CMP_T=null, ACTIVE_CP=new Set(), ACTIVE_CR=new Set();
 const GROUPS={ga4:{label:"GA4",color:"#1689C0"},plat:{label:"Plataforma",color:"#A63D81"}};
-const GROUP_ORDER=["ga4","plat"];let CURRENCY="USD";let activeGroups=new Set(["ga4"]);let hiddenMetrics=new Set();function activeMetrics(){return METRICS.filter(function(m){return m.grp==="solo"?!hiddenMetrics.has(m.k):(activeGroups.has(m.grp)&&!hiddenMetrics.has(m.k));});}
+const GROUP_ORDER=["ga4","plat"];let CURRENCY="USD";let MONEY_SYM="US$";let activeGroups=new Set(["ga4"]);let hiddenMetrics=new Set();function activeMetrics(){return METRICS.filter(function(m){return m.grp==="solo"?!hiddenMetrics.has(m.k):(activeGroups.has(m.grp)&&!hiddenMetrics.has(m.k));});}
 const METRICS=[
   // Consumo (columna sola)
   {k:"cons",label:"Consumo",fmt:"money",grp:"solo"},
@@ -676,7 +676,7 @@ const grpStartFor=arr=>arr.map((m,i)=>i>0&&m.grp!==arr[i-1].grp);
 function fmtMetric(v,fmt){if(v==null||isNaN(v))return"—";
   if(fmt==="money")return fmtK(v);if(fmt==="int")return Math.round(v).toLocaleString("es-CL");
   if(fmt==="pct")return v.toFixed(2)+"%";if(fmt==="x")return v.toFixed(2)+"x";
-  if(fmt==="cpc")return CURRENCY==="ARS"?"$"+Math.round(v).toLocaleString("es-CL"):"US$"+v.toFixed(2);if(fmt==="num")return v.toFixed(2);return String(v);}
+  if(fmt==="cpc")return CURRENCY==="ARS"?"$"+Math.round(v).toLocaleString("es-CL"):MONEY_SYM+v.toFixed(2);if(fmt==="num")return v.toFixed(2);return String(v);}
 const rFrom=document.getElementById("rFrom"), rTo=document.getElementById("rTo"), rFrom2=document.getElementById("rFrom2"), rTo2=document.getElementById("rTo2");
 const isoD=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 
@@ -969,7 +969,7 @@ function syncModeUI(){
   const d=document.querySelector(".title-block .desc");
   if(d) d.textContent=DEMO
     ? "MODO DEMO · datos y campañas de ejemplo para probar las funciones"
-    : "Datos en vivo desde BigQuery (prune_cl) · valores en US$";
+    : "Datos en vivo desde BigQuery ("+(CURRENT_CLIENT||"prune_cl")+") · valores en "+((MONEY_SYM||"US$").trim())+"";
 }
 
 function onMonthChange(){MB=monthBounds(monthSel.value);
@@ -1018,9 +1018,9 @@ function updateClientChrome(name,ds){
   if(foot){foot.innerHTML='<span class="wm">uke.</span> &middot; Ukelele Growth Company &middot; '+clEsc(name)+' &middot; BigQuery &middot; '+clEsc(ds)+' &middot; US$ &middot; <span id="footPeriod"></span>';
     try{if(typeof MB!=="undefined"&&MB)document.getElementById("footPeriod").textContent=MB.start_date+" -> "+MB.end_date;}catch(e){}}
 }
-function selectClient(ds,name){
+async function selectClient(ds,name){
   if(!/^[a-z0-9_]+$/.test(ds||""))return;
-  CURRENT_CLIENT=ds;name=name||clPretty(ds);
+  CURRENT_CLIENT=ds;name=name||clPretty(ds);try{var _cr=await api("currency");var _rw=((_cr&&_cr[0]&&_cr[0].ccy)||"USD").toUpperCase();CURRENCY=(_rw.indexOf("USD")===0||["COL","CCL","BLUE","MEP"].indexOf(_rw)>=0)?"USD":_rw;MONEY_SYM=(CURRENCY==="USD")?"US$":(CURRENCY==="ARS")?"$":CURRENCY+" ";}catch(e){CURRENCY="USD";MONEY_SYM="US$";}
   updateClientChrome(name,ds);
   var ov=document.getElementById("clientLanding");if(ov)ov.hidden=true;
   try{history.replaceState(null,"","?client="+ds);}catch(e){}
