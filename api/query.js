@@ -12,7 +12,7 @@ const PCASE = "CASE platform WHEN 'Facebook' THEN 'meta' WHEN 'Google' THEN 'gad
 
 // Whitelist de queries. El cliente NUNCA manda SQL: manda un "kind" + params.
 const QUERIES = {
-  currency: () => ({ query: "SELECT CASE WHEN ABS(SUM(cost)-SUM(cost_raw))<=ABS(SUM(cost)-SUM(cost_converted)) THEN UPPER(MAX(account_currency)) ELSE UPPER(MAX(ads_conversion_currency)) END AS ccy FROM " + CAMP + " WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 90 DAY)", params: {} }),
+  currency: () => ({ query: "SELECT CASE WHEN ABS(SUM(cost)-SUM(cost_raw))<=ABS(SUM(cost)-SUM(cost_converted)) THEN UPPER(MAX(account_currency)) ELSE UPPER(MAX(ads_conversion_currency)) END AS ccy FROM " + CAMP + " WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)", params: {} }),
   clients: () => ({ query: "WITH spend AS (SELECT business_name AS ds, STRING_AGG(DISTINCT platform, ',' ORDER BY platform) AS platforms, MAX(date) AS last_date, ROUND(SUM(cost_converted),0) AS spend_90d FROM `" + PROJECT + ".cross_clients.complete_ads_report` WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 90 DAY) GROUP BY business_name), ai AS (SELECT client_normalized_name AS ds, ANY_VALUE(vertical) AS vertical, ANY_VALUE(ukelele_group) AS grp, LOGICAL_OR(NOT has_terminated) AS active FROM `" + PROJECT + ".cross_clients.accounts_info` GROUP BY client_normalized_name) SELECT s.ds AS client, s.platforms, s.last_date, s.spend_90d, ai.vertical AS vertical, ai.grp AS grp FROM spend s INNER JOIN ai ON s.ds = ai.ds WHERE s.spend_90d > 0 AND ai.active = TRUE ORDER BY vertical, s.spend_90d DESC", params: {} }),
 
   pacing_campaigns: p => ({
