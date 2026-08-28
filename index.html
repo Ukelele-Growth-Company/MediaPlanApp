@@ -274,7 +274,7 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
   <div id="paceBanner" class="pace-banner on"><span id="pbMain" style="display:none"></span><span id="pbSub" style="display:none"></span><div class="pb-left"><div class="pb-label">Ejecuci&oacute;n del plan</div><div class="pb-big"><span id="pbPct">&mdash;</span></div><div class="pb-sublabel">del objetivo ejecutado</div></div><div class="pb-mid"><div class="pb-caption" id="pbCaption">&nbsp;</div><div class="pb-bar"><div class="pb-bar-fill" id="pbFill"></div><div class="pb-bar-marker" id="pbMarker" title="Hoy"></div></div></div><div class="pace-chip" id="pbChip">&mdash;</div></div>
 
   <div class="kpis">
-    <div class="kpi"><div class="lbl">Inversi&oacute;n objetivo</div><div class="val" id="kTarget">US$11K</div><div class="meta" id="kTargetMeta">Por conectar</div></div>
+    <div class="kpi"><div class="lbl">Inversi&oacute;n objetivo</div><div class="val"><span id="kTargetSym"></span><input id="kTargetInput" inputmode="numeric" autocomplete="off" placeholder="-" onchange="saveTarget(this.value)" onkeydown="if(event.key==='Enter'){this.blur();}" style="border:none;border-bottom:1px dashed #bbb;background:transparent;font:inherit;color:inherit;width:7ch;padding:0;outline:none" /></div><div class="meta" id="kTargetMeta">Por conectar</div></div>
     <div class="kpi b2"><div class="lbl">Inversi&oacute;n ejecutada</div><div class="val" id="kSpent">-</div><div class="meta" id="kSpentMeta">&nbsp;</div></div>
     <span id="kBudget" style="display:none"></span><span id="kBudgetMeta" style="display:none"></span>
     <div class="kpi b3"><div class="lbl">Proyección de cierre</div><div class="val" id="kProj">—</div><div class="meta" id="kProjMeta">&nbsp;</div></div>
@@ -349,7 +349,7 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
 </div>
 
 <script>
-const LS_PREFIX="mp_prune_cl_v2_"; const TARGET_INVEST=11000;
+const LS_PREFIX="mp_prune_cl_v2_"; let MANUAL_TARGET=null;function manualTarget(){return (MANUAL_TARGET!=null&&!isNaN(MANUAL_TARGET))?Number(MANUAL_TARGET):0;}
 const PLATFORMS=[
   {key:"meta", label:"Meta Ads",   color:"#E30233"},
   {key:"gads", label:"Google Ads", color:"#1689C0"},
@@ -508,13 +508,13 @@ async function loadData(){if(!CURRENT_CLIENT){return;}
   document.getElementById("body").innerHTML=`<tr><td colspan="6"><div class="loading"><div class="spinner"></div>Consultando prune_cl…</div></td></tr>`;
   try{
     const P={from:MB.start_date,to:MB.end_date};
-    const[camps,daily,ga4,budRows,actC]=await Promise.all([
+    const[camps,daily,ga4,budRows,actC,tgtRows]=await Promise.all([
       api("pacing_campaigns",P),
       api("pacing_daily",P),
       api("ga4_totals",P),
-      api("budgets_get",{month:monthSel.value}),api("active_campaigns",P)
+      api("budgets_get",{month:monthSel.value}),api("active_campaigns",P),api("target_get",{month:monthSel.value})
     ]);
-    const B={};(budRows||[]).forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});
+    MANUAL_TARGET=(tgtRows&&tgtRows[0]&&tgtRows[0].amount!=null)?Number(tgtRows[0].amount):null;const B={};(budRows||[]).forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});
     if(Object.keys(B).length===0 && MB.isCur){const pd=new Date(MB.first.getFullYear(),MB.first.getMonth()-1,1);const prevYm=pd.getFullYear()+"-"+String(pd.getMonth()+1).padStart(2,"0");try{const prevRows=await api("budgets_get",{month:prevYm});if(prevRows&&prevRows.length){prevRows.forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});prevRows.forEach(r=>{setBudget(monthSel.value,r.platform,r.campaign,+r.amount||0);});}}catch(e){}}BUDGETS=B;
     ACTIVE_CP=new Set((actC||[]).map(function(r){return r.grp+"|"+r.name;}));const C={meta:[],gads:[],ttk:[],pin:[]}, D={meta:{},gads:{},ttk:{},pin:{}};
     camps.forEach(r=>{if(C[r.grp])C[r.grp].push({name:r.name,spend:+r.spend||0});});
@@ -610,18 +610,20 @@ function render(){
 }
 
 let grandSpentCache=0;
+function renderTarget(){var sym=document.getElementById("kTargetSym");if(sym)sym.textContent=(MONEY_SYM||"US$")+" ";var inp=document.getElementById("kTargetInput");if(inp&&document.activeElement!==inp){inp.value=(MANUAL_TARGET!=null&&!isNaN(MANUAL_TARGET))?Number(MANUAL_TARGET).toLocaleString("es-AR"):"";}var m=document.getElementById("kTargetMeta");if(m)m.textContent=(MANUAL_TARGET!=null)?"Objetivo del mes":"Definir objetivo";}
+function saveTarget(v){var digits=String(v==null?"":v).replace(/[^0-9]/g,"");MANUAL_TARGET=digits===""?null:Number(digits);var ym=monthSel.value;try{api("target_set",{month:ym,amount:(MANUAL_TARGET==null?"":MANUAL_TARGET),currency:(CURRENCY||"USD")}).then(function(){if(typeof flagSaved==="function")flagSaved();}).catch(function(){if(typeof flagError==="function")flagError();});}catch(e){}try{render();}catch(e){}}
 function renderSummary(grandSpent){
   const ym=monthSel.value, dEl=MB.daysElapsed, dTot=MB.daysInMonth, tFrac=dTot>0?dEl/dTot:0;
   const grandPlan=monthBudgetTotal(ym);
   const proj=dEl>0?grandSpent/dEl*dTot:0, ideal=grandPlan*tFrac;
   const roas=grandSpent>0?DATA.ga4.revenue/grandSpent:0, execPct=pct(grandSpent,grandPlan);
-  const bn=document.getElementById("paceBanner");let chip,cls;const execPctO=pct(grandSpent,TARGET_INVEST);const timePct=tFrac*100;const pv=pct(proj,TARGET_INVEST);if(TARGET_INVEST<=0){cls="on";chip="SIN OBJETIVO";}else if(pv>105){cls="over";chip="SOBRE-PACING";}else if(pv<95){cls="under";chip="SUB-EJECUTADO";}else{cls="on";chip="EN RITMO";}bn.className="pace-banner "+cls;document.getElementById("pbPct").textContent=(TARGET_INVEST>0?execPctO.toFixed(0):"0")+"%";document.getElementById("pbFill").style.width=Math.min(Math.max(execPctO,0),100)+"%";document.getElementById("pbMarker").style.left=Math.min(Math.max(timePct,0),100)+"%";document.getElementById("pbCaption").innerHTML="D&Iacute;A "+dEl+" DE "+dTot+" &middot; <strong>"+timePct.toFixed(0)+"%</strong> del mes transcurrido";document.getElementById("pbNote").innerHTML="&#9432; Proyecci&oacute;n de cierre estimada seg&uacute;n el ritmo de inversi&oacute;n al d&iacute;a "+dEl+". Puede variar seg&uacute;n optimizaciones futuras.";document.getElementById("pbChip").textContent=chip;
-  document.getElementById("kTarget").textContent=fmtK(TARGET_INVEST);document.getElementById("kTargetMeta").innerHTML="&nbsp;";document.getElementById("kSpent").textContent=fmtK(grandSpent);
-  document.getElementById("kSpentMeta").innerHTML=`<strong>${pct(grandSpent,TARGET_INVEST).toFixed(0)}%</strong> del objetivo · ${dEl}/${dTot} días`;
+  const bn=document.getElementById("paceBanner");let chip,cls;const execPctO=pct(grandSpent,manualTarget());const timePct=tFrac*100;const pv=pct(proj,manualTarget());if(manualTarget()<=0){cls="on";chip="SIN OBJETIVO";}else if(pv>105){cls="over";chip="SOBRE-PACING";}else if(pv<95){cls="under";chip="SUB-EJECUTADO";}else{cls="on";chip="EN RITMO";}bn.className="pace-banner "+cls;document.getElementById("pbPct").textContent=(manualTarget()>0?execPctO.toFixed(0):"0")+"%";document.getElementById("pbFill").style.width=Math.min(Math.max(execPctO,0),100)+"%";document.getElementById("pbMarker").style.left=Math.min(Math.max(timePct,0),100)+"%";document.getElementById("pbCaption").innerHTML="D&Iacute;A "+dEl+" DE "+dTot+" &middot; <strong>"+timePct.toFixed(0)+"%</strong> del mes transcurrido";document.getElementById("pbNote").innerHTML="&#9432; Proyecci&oacute;n de cierre estimada seg&uacute;n el ritmo de inversi&oacute;n al d&iacute;a "+dEl+". Puede variar seg&uacute;n optimizaciones futuras.";document.getElementById("pbChip").textContent=chip;
+  renderTarget();document.getElementById("kSpent").textContent=fmtK(grandSpent);
+  document.getElementById("kSpentMeta").innerHTML=`<strong>${pct(grandSpent,manualTarget()).toFixed(0)}%</strong> del objetivo · ${dEl}/${dTot} días`;
   document.getElementById("kBudget").textContent=fmtK(grandPlan);
   document.getElementById("kBudgetMeta").innerHTML=grandPlan>0?`Pace ideal a hoy: <strong>${fmtK(ideal)}</strong>`:"Sin plan cargado";
   document.getElementById("kProj").textContent=fmtK(proj);
-  document.getElementById("kProjMeta").innerHTML=`<strong>${pct(proj,TARGET_INVEST).toFixed(0)}%</strong> del objetivo`;
+  document.getElementById("kProjMeta").innerHTML=`<strong>${pct(proj,manualTarget()).toFixed(0)}%</strong> del objetivo`;
   document.getElementById("kRoas").textContent=roas>0?roas.toFixed(2)+"x":"—";
   document.getElementById("kRoasMeta").innerHTML=`Revenue GA4: <strong>${fmtK(DATA.ga4.revenue)}</strong>`;
   document.getElementById("ga4Line").innerHTML=`GA4 · <strong>${DATA.ga4.transactions.toLocaleString("es-CL")}</strong> transacciones · <strong>${fmtMoney(DATA.ga4.revenue)}</strong> revenue · <strong>${DATA.ga4.sessions.toLocaleString("es-CL")}</strong> sesiones · ROAS blended ${roas>0?roas.toFixed(2)+"x":"—"}`;
@@ -633,9 +635,9 @@ function drawChart(budTotal){
   for(let d=1;d<=MB.daysInMonth;d++){labels.push(String(d));
     if(d<=MB.daysElapsed){let day=0;PLATFORMS.forEach(p=>day+=(DATA.daily[p.key][iso(d)]||0));actualCum.push(day);}
     else actualCum.push(null);}
-  const ideal=[],bud=[];const dTgt=TARGET_INVEST>0?TARGET_INVEST/MB.daysInMonth:null;for(let d=1;d<=MB.daysInMonth;d++){ideal.push(dTgt);bud.push(null);}
+  const ideal=[],bud=[];const dTgt=manualTarget()>0?manualTarget()/MB.daysInMonth:null;for(let d=1;d<=MB.daysInMonth;d++){ideal.push(dTgt);bud.push(null);}
   const ds=[{label:"Inversi\u00f3n diaria",data:actualCum,borderColor:"#E30233",backgroundColor:"rgba(227,2,51,.08)",borderWidth:3,tension:.15,fill:true,pointRadius:0,spanGaps:false}];
-  if(TARGET_INVEST>0){ds.push({label:"Objetivo diario",data:ideal,borderColor:"#004E8A",borderWidth:2,borderDash:[6,4],fill:false,pointRadius:0});
+  if(manualTarget()>0){ds.push({label:"Objetivo diario",data:ideal,borderColor:"#004E8A",borderWidth:2,borderDash:[6,4],fill:false,pointRadius:0});
     }
   const cfg={type:"line",data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,
     interaction:{mode:"index",intersect:false},
