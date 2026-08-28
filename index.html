@@ -1000,7 +1000,7 @@ function renderClients(rows){
     html+='<div class="cl-group"><div class="cl-gt">'+clEsc(v)+'</div><div class="cl-grid">';
     groups[v].forEach(function(r){
       var plats=String(r.platforms||"").split(",").filter(Boolean).map(function(p){var s=CL_PLAT[p]||{l:p,c:"#888"};return '<span class="cl-chip" style="background:'+s.c+';color:'+(s.t||"#fff")+'">'+clEsc(s.l)+'</span>';}).join("");
-      html+='<div class="cl-card" data-ds="'+clEsc(r.client)+'" data-name="'+clEsc(clPretty(r.client))+'"><div class="cl-name">'+clEsc(clPretty(r.client))+'</div><div class="cl-plats">'+plats+'</div><div class="cl-spend">Inv. 90d: <b>'+clFmtUSD(r.spend_90d)+'</b></div></div>';
+      html+='<div class="cl-card" data-ds="'+clEsc(r.client)+'" data-name="'+clEsc(clPretty(r.client))+'"><div class="cl-name">'+clEsc(clPretty(r.client))+'</div><div class="cl-plats">'+plats+'</div></div>';
     });
     html+='</div></div>';
   });
