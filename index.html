@@ -1020,7 +1020,7 @@ function updateClientChrome(name,ds){
 }
 async function selectClient(ds,name){
   if(!/^[a-z0-9_]+$/.test(ds||""))return;
-  CURRENT_CLIENT=ds;name=name||clPretty(ds);try{var _cr=await api("currency");var _rw=((_cr&&_cr[0]&&_cr[0].ccy)||"USD").toUpperCase();CURRENCY=(_rw.indexOf("USD")===0||["COL","CCL","BLUE","MEP"].indexOf(_rw)>=0)?"USD":_rw;MONEY_SYM=(CURRENCY==="USD")?"US$":(CURRENCY==="ARS")?"$":CURRENCY+" ";}catch(e){CURRENCY="USD";MONEY_SYM="US$";}
+  CURRENT_CLIENT=ds;name=name||clPretty(ds);var _ck="mp_ccy_"+ds,_cached=null;try{_cached=localStorage.getItem(_ck);}catch(e){}function _applyCcy(x){x=(x||"USD").toUpperCase();CURRENCY=(x.indexOf("USD")===0||["COL","CCL","BLUE","MEP"].indexOf(x)>=0)?"USD":x;MONEY_SYM=(CURRENCY==="USD")?"US$":(CURRENCY==="ARS")?"$":CURRENCY+" ";}if(_cached){_applyCcy(_cached);}else{try{var _cr=await api("currency");var _rw=(_cr&&_cr[0]&&_cr[0].ccy)||"USD";_applyCcy(_rw);try{localStorage.setItem(_ck,_rw);}catch(e){}}catch(e){_applyCcy("USD");}}
   updateClientChrome(name,ds);
   var ov=document.getElementById("clientLanding");if(ov)ov.hidden=true;
   try{history.replaceState(null,"","?client="+ds);}catch(e){}
