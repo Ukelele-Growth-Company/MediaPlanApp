@@ -562,7 +562,7 @@ function render(){
       tr.innerHTML=`
         <td><span class="stdot ${ACTIVE_CP.has(p.key+"|"+c.name)?"on":"off"}"></span><span class="camp-name">${c.name}</span></td>
         <td><input class="plan-inp ${getBudget(ym,p.key,c.name)===""?'empty':''}" type="number" min="0" step="1000" placeholder="0"${isPast?" disabled":""}
-             value="${getBudget(ym,p.key,c.name)}" data-plat="${p.key}" data-name="${encodeURIComponent(c.name)}"><button class="plan-ok" title="Aplicar">&#10003;</button></td>
+             value="${getBudget(ym,p.key,c.name)}" data-plat="${p.key}" data-name="${encodeURIComponent(c.name)}"></td>
         <td>${fmtMoney(c.spend)}<div class="progress"><span style="width:${bar}%;background:${p.color}"></span></div></td>
         <td>${bu>0?ep.toFixed(0)+"%":"—"}</td>
         
