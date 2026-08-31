@@ -14,62 +14,62 @@ const PCASE = "CASE platform WHEN 'Facebook' THEN 'meta' WHEN 'Google' THEN 'gad
 const QUERIES = {
   target_get: p => ({ query: "SELECT amount, currency FROM `" + PROJECT + ".cross_clients.media_plan_targets` WHERE client=@client AND month=@month LIMIT 1", params: { client: p.client, month: p.month }, types: { client: 'STRING', month: 'STRING' } }),
   target_set: p => ({ query: "MERGE `" + PROJECT + ".cross_clients.media_plan_targets` T USING (SELECT @client client, @month month, @amount amount, @currency currency) S ON T.client=S.client AND T.month=S.month WHEN MATCHED AND S.amount IS NULL THEN DELETE WHEN MATCHED THEN UPDATE SET amount=S.amount, currency=S.currency, updated_at=CURRENT_TIMESTAMP() WHEN NOT MATCHED AND S.amount IS NOT NULL THEN INSERT (client,month,amount,currency,updated_at) VALUES (S.client,S.month,S.amount,S.currency,CURRENT_TIMESTAMP())", params: { client: p.client, month: p.month, amount: (p.amount==null||p.amount==='')?null:Number(p.amount), currency: p.currency||null }, types: { client: 'STRING', month: 'STRING', amount: 'FLOAT64', currency: 'STRING' } }),
-  currency: () => ({ query: "SELECT CASE WHEN ABS(SUM(cost)-SUM(cost_raw))<=ABS(SUM(cost)-SUM(cost_converted)) THEN UPPER(MAX(account_currency)) ELSE UPPER(MAX(ads_conversion_currency)) END AS ccy FROM " + CAMP + " WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)", params: {} }),
-  clients: () => ({ query: "WITH spend AS (SELECT business_name AS ds, STRING_AGG(DISTINCT platform, ',' ORDER BY platform) AS platforms, MAX(date) AS last_date, ROUND(SUM(cost_converted),0) AS spend_90d FROM `" + PROJECT + ".cross_clients.complete_ads_report` WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 90 DAY) GROUP BY business_name), ai AS (SELECT client_normalized_name AS ds, ANY_VALUE(vertical) AS vertical, ANY_VALUE(ukelele_group) AS grp, LOGICAL_OR(NOT has_terminated) AS active FROM `" + PROJECT + ".cross_clients.accounts_info` GROUP BY client_normalized_name) SELECT s.ds AS client, s.platforms, s.last_date, s.spend_90d, ai.vertical AS vertical, ai.grp AS grp FROM spend s INNER JOIN ai ON s.ds = ai.ds WHERE s.spend_90d > 0 AND ai.active = TRUE ORDER BY vertical, s.spend_90d DESC", params: {} }),
+  currency: () => ({ query: "SELECT UPPER(account_currency) AS ccy FROM " + CAMP + " WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 90 DAY) AND account_currency IS NOT NULL GROUP BY UPPER(account_currency) ORDER BY SUM(cost_raw) DESC LIMIT 1", params: {} }),
+  clients: () => ({ query: "WITH ai AS (SELECT client_normalized_name AS cli, ANY_VALUE(vertical) AS vertical, ANY_VALUE(ukelele_group) AS grp, LOGICAL_OR(NOT has_terminated) AS active FROM `" + PROJECT + ".cross_clients.accounts_info` GROUP BY cli), plats AS (SELECT business_name AS cli, STRING_AGG(DISTINCT platform ORDER BY platform) AS platforms FROM `" + PROJECT + ".cross_clients.complete_ads_report` WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 180 DAY) GROUP BY cli) SELECT ai.cli AS client, plats.platforms AS platforms, ai.vertical AS vertical, ai.grp AS grp, ai.active AS active FROM ai LEFT JOIN plats ON ai.cli = plats.cli ORDER BY ai.vertical NULLS LAST, ai.cli", params: {} }),
 
   pacing_campaigns: p => ({
-    query: `SELECT ${PCASE} grp, campaign_name name, SUM(cost) spend
+    query: `SELECT ${PCASE} grp, campaign_name name, SUM(cost_raw) spend
             FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to
             GROUP BY grp, name HAVING spend > 0`,
     params: { from: p.from, to: p.to }
   }),
   pacing_daily: p => ({
-    query: `SELECT CAST(date AS STRING) date, ${PCASE} grp, SUM(cost) spend
+    query: `SELECT CAST(date AS STRING) date, ${PCASE} grp, SUM(cost_raw) spend
             FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to
             GROUP BY date, grp`,
     params: { from: p.from, to: p.to }
   }),
   ga4_totals: p => ({
-    query: `SELECT SUM(purchase_revenue) rev, SUM(purchase) tx, SUM(session_start) sess
+    query: `SELECT SUM(purchase_revenue_raw) rev, SUM(purchase) tx, SUM(session_start) sess
             FROM ${CAMP} WHERE date BETWEEN @from AND @to`,
     params: { from: p.from, to: p.to }
   }),
   results: p => ({
     query: `SELECT ${PCASE} grp, campaign_name name,
-              SUM(cost) cons, SUM(impressions) imp, SUM(clicks) clk,
-              SUM(purchase_revenue) ga4Rev, SUM(purchase) ga4Tx, SUM(session_start) sess,
-              SUM(ads_purchase_revenue) plRev, SUM(ads_purchase) plTx
+              SUM(cost_raw) cons, SUM(impressions) imp, SUM(clicks) clk,
+              SUM(purchase_revenue_raw) ga4Rev, SUM(purchase) ga4Tx, SUM(session_start) sess,
+              SUM(ads_purchase_revenue_raw) plRev, SUM(ads_purchase) plTx
             FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to
             GROUP BY grp, name HAVING cons > 0`,
     params: { from: p.from, to: p.to }
   }),
   camp_daily: p => ({
     query: `SELECT CAST(date AS STRING) date,
-              SUM(cost) cons, SUM(impressions) imp, SUM(clicks) clk,
-              SUM(purchase_revenue) ga4Rev, SUM(purchase) ga4Tx, SUM(session_start) sess,
-              SUM(ads_purchase_revenue) plRev, SUM(ads_purchase) plTx
+              SUM(cost_raw) cons, SUM(impressions) imp, SUM(clicks) clk,
+              SUM(purchase_revenue_raw) ga4Rev, SUM(purchase) ga4Tx, SUM(session_start) sess,
+              SUM(ads_purchase_revenue_raw) plRev, SUM(ads_purchase) plTx
             FROM ${CAMP} WHERE campaign_name = @name AND ${PLAT} AND date BETWEEN @from AND @to
             GROUP BY date ORDER BY date`,
     params: { name: p.name, from: p.from, to: p.to }
   }),
   adsets: p => ({
     query: `SELECT ad_set_name name,
-              SUM(cost) cons, SUM(impressions) imp, SUM(clicks) clk,
-              SUM(ads_purchase_revenue) plRev, SUM(ads_purchase) plTx
+              SUM(cost_raw) cons, SUM(impressions) imp, SUM(clicks) clk,
+              SUM(ads_purchase_revenue_raw) plRev, SUM(ads_purchase) plTx
             FROM ${ADSET} WHERE campaign_name = @name AND date BETWEEN @from AND @to
             GROUP BY ad_set_name HAVING cons > 0 ORDER BY cons DESC`,
     params: { name: p.name, from: p.from, to: p.to }
   }),
   adset_daily: p => ({
     query: `SELECT CAST(date AS STRING) date,
-              SUM(cost) cons, SUM(impressions) imp, SUM(clicks) clk,
-              SUM(ads_purchase_revenue) plRev, SUM(ads_purchase) plTx
+              SUM(cost_raw) cons, SUM(impressions) imp, SUM(clicks) clk,
+              SUM(ads_purchase_revenue_raw) plRev, SUM(ads_purchase) plTx
             FROM ${ADSET} WHERE campaign_name = @camp AND ad_set_name = @adset AND date BETWEEN @from AND @to
             GROUP BY date ORDER BY date`,
     params: { camp: p.camp, adset: p.adset, from: p.from, to: p.to }
   }),
   // --- plan mensual (presupuesto por campaña), compartido por todo el equipo ---
-  active_campaigns: p => ({ query: `WITH mx AS (SELECT platform p, MAX(date) d FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to GROUP BY platform) SELECT DISTINCT ${PCASE} grp, campaign_name name FROM ${CAMP} JOIN mx ON platform=mx.p AND date=mx.d WHERE cost>0`, params: { from: p.from, to: p.to } }), active_adsets: p => ({ query: `WITH mx AS (SELECT MAX(date) d FROM ${ADSET} WHERE campaign_name=@name AND date BETWEEN @from AND @to) SELECT DISTINCT ad_set_name name FROM ${ADSET}, mx WHERE campaign_name=@name AND cost>0 AND date=mx.d`, params: { name: p.name, from: p.from, to: p.to } }), budgets_get: p => ({
+  active_campaigns: p => ({ query: `WITH mx AS (SELECT platform p, MAX(date) d FROM ${CAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to GROUP BY platform) SELECT DISTINCT ${PCASE} grp, campaign_name name FROM ${CAMP} JOIN mx ON platform=mx.p AND date=mx.d WHERE cost_raw>0`, params: { from: p.from, to: p.to } }), active_adsets: p => ({ query: `WITH mx AS (SELECT MAX(date) d FROM ${ADSET} WHERE campaign_name=@name AND date BETWEEN @from AND @to) SELECT DISTINCT ad_set_name name FROM ${ADSET}, mx WHERE campaign_name=@name AND cost_raw>0 AND date=mx.d`, params: { name: p.name, from: p.from, to: p.to } }), budgets_get: p => ({
     query: `SELECT platform, campaign, amount FROM ${BUD} WHERE month = @month`,
     params: { month: p.month }
   }),
@@ -124,7 +124,7 @@ module.exports = async (req, res) => {
     var __q = query.split('__DS__').join(__ds);
     const opts = { query: __q, params, location: 'US' };
     if (types) opts.types = types;
-    let rows; try { const _r = await client().query(opts); rows = _r[0]; } catch(_e){ if(body.kind==='budgets_get'){ rows=[]; } else { throw _e; } }
+    let rows; try { const _r = await client().query(opts); rows = _r[0]; } catch(_e){ if(body.kind==='budgets_get'||String((_e&&_e.message)||'').indexOf('Not found')>=0){ rows=[]; } else { throw _e; } }
     res.status(200).json({ rows });
   } catch (e) {
     res.status(500).json({ error: (e && e.message) || 'Error de query' });
