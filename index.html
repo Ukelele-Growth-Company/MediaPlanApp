@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- redeploy --><title>Media Plan · Prüne Chile</title>
+<!-- redeploy --><title>Media Plan · Ukelele</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
@@ -514,7 +514,7 @@ async function loadData(){if(!CURRENT_CLIENT){return;}
   }
   document.getElementById("pbMain").textContent="Cargando datos…";
   document.getElementById("pbSub").innerHTML="&nbsp;";document.getElementById("pbChip").textContent="…";
-  document.getElementById("body").innerHTML=`<tr><td colspan="6"><div class="loading"><div class="spinner"></div>Consultando prune_cl…</div></td></tr>`;
+  document.getElementById("body").innerHTML=`<tr><td colspan="6"><div class="loading"><div class="spinner"></div>Cargando datos…</div></td></tr>`;
   try{
     const P={from:MB.start_date,to:MB.end_date};
     const[camps,daily,ga4,budRows,actC,tgtRows,plannedRows]=await Promise.all([
@@ -766,7 +766,7 @@ async function loadResults(){if(!CURRENT_CLIENT){return;}campCache={};COMPARE=!!
   const from=rFrom.value,to=rTo.value;if(!from||!to)return;
   document.getElementById("rPeriodLbl").textContent=`${from} → ${to}`;
   if(DEMO){RDATA=genDemoResults(from,to);renderResults();return;}
-  document.getElementById("rBody").innerHTML=`<tr><td colspan="15"><div class="loading"><div class="spinner"></div>Consultando prune_cl…</div></td></tr>`;
+  document.getElementById("rBody").innerHTML=`<tr><td colspan="15"><div class="loading"><div class="spinner"></div>Cargando datos…</div></td></tr>`;
   try{
     const rows=await api("results",{from,to});try{var actC=await api("active_campaigns",{from,to});ACTIVE_CR=new Set((actC||[]).map(function(r){return r.grp+"|"+r.name;}));}catch(e){ACTIVE_CR=new Set();}
     const R={meta:[],gads:[],ttk:[],pin:[]};
@@ -1075,8 +1075,9 @@ function updateClientChrome(name,ds){
     if(!chip){chip=document.createElement("div");chip.id="clientChip";chip.style.cssText="display:flex;align-items:center;gap:9px;margin-top:7px;";var h1=tb.querySelector("h1");if(h1&&h1.nextSibling)tb.insertBefore(chip,h1.nextSibling);else tb.appendChild(chip);}
     chip.innerHTML='<span style="font-weight:800;font-size:14px;color:#E30233;">'+clEsc(name)+'</span><button type="button" onclick="openLanding()" style="font-size:11px;padding:3px 10px;border:1px solid #ddd;border-radius:20px;background:#fff;cursor:pointer;">Cambiar cliente</button>';
   }
+  try{document.title="Media Plan · "+name;}catch(e){}
   var foot=document.querySelector(".foot");
-  if(foot){foot.innerHTML='<span class="wm">uke.</span> &middot; Ukelele Growth Company &middot; '+clEsc(name)+' &middot; BigQuery &middot; '+clEsc(ds)+' &middot; US$ &middot; <span id="footPeriod"></span>';
+  if(foot){foot.innerHTML='<span class="wm">uke.</span> &middot; Ukelele Growth Company &middot; '+clEsc(name)+' &middot; BigQuery &middot; '+clEsc(ds)+' &middot; '+(typeof MONEY_SYM!=="undefined"?MONEY_SYM:"US$")+' &middot; <span id="footPeriod"></span>';
     try{if(typeof MB!=="undefined"&&MB)document.getElementById("footPeriod").textContent=MB.start_date+" -> "+MB.end_date;}catch(e){}}
 }
 async function selectClient(ds,name){
