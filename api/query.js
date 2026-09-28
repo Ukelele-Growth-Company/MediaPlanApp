@@ -15,6 +15,20 @@ const ADS = '`' + PROJECT + '.cross_clients.complete_ads_report`';
 const VCAMP = '`' + PROJECT + '.__DS__.v_media_campaign`';
 const VAD = '`' + PROJECT + '.__DS__.v_media_ad`';
 const QUERIES = {
+  pacing_adsets: p => ({
+    query: "SELECT " + PCASE + " grp, campaign_name name, ad_set_name aset, SUM(cost) cons FROM " + VAD + " WHERE " + PLAT + " AND date BETWEEN @from AND @to GROUP BY grp, name, aset HAVING cons > 0",
+    params: { from: p.from, to: p.to }
+  }),
+  adset_budgets_get: p => ({
+    query: "SELECT platform, campaign, ad_set, amount FROM \`" + PROJECT + ".cross_clients.media_plan_adset_budgets\` WHERE client=@client AND month=@month",
+    params: { client: p.client, month: p.month },
+    types: { client:'STRING', month:'STRING' }
+  }),
+  adset_budget_set: p => ({
+    query: "MERGE \`" + PROJECT + ".cross_clients.media_plan_adset_budgets\` T USING (SELECT @client client, @month month, @platform platform, @campaign campaign, @adset ad_set, @amount amount) S ON T.client=S.client AND T.month=S.month AND T.platform=S.platform AND T.campaign=S.campaign AND T.ad_set=S.ad_set WHEN MATCHED AND S.amount IS NULL THEN DELETE WHEN MATCHED THEN UPDATE SET amount=S.amount, updated_at=CURRENT_TIMESTAMP() WHEN NOT MATCHED AND S.amount IS NOT NULL THEN INSERT (client,month,platform,campaign,ad_set,amount,updated_at) VALUES (S.client,S.month,S.platform,S.campaign,S.ad_set,S.amount,CURRENT_TIMESTAMP())",
+    params: { client:p.client, month:p.month, platform:p.platform, campaign:p.campaign, adset:p.adset, amount:(p.amount==null?null:p.amount) },
+    types: { client:'STRING', month:'STRING', platform:'STRING', campaign:'STRING', adset:'STRING', amount:'FLOAT64' }
+  }),
   planned_get: p => ({ query: "SELECT platform, campaign_name, notas FROM `" + PROJECT + ".cross_clients.planned_campaigns` WHERE client=@client AND month=@month", params: { client: p.client, month: p.month }, types: { client: 'STRING', month: 'STRING' } }),
   planned_add: p => ({ query: "MERGE `" + PROJECT + ".cross_clients.planned_campaigns` T USING (SELECT @client client, @month month, @platform platform, @campaign campaign_name, @notas notas) S ON T.client=S.client AND T.month=S.month AND T.platform=S.platform AND T.campaign_name=S.campaign_name WHEN MATCHED THEN UPDATE SET notas=S.notas, updated_at=CURRENT_TIMESTAMP() WHEN NOT MATCHED THEN INSERT (client,month,platform,campaign_name,notas,created_at,updated_at) VALUES (S.client,S.month,S.platform,S.campaign_name,S.notas,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP())", params: { client: p.client, month: p.month, platform: p.platform, campaign: p.campaign, notas: (p.notas||null) }, types: { client: 'STRING', month: 'STRING', platform: 'STRING', campaign: 'STRING', notas: 'STRING' } }),
   planned_del: p => ({ query: "DELETE FROM `" + PROJECT + ".cross_clients.planned_campaigns` WHERE client=@client AND month=@month AND platform=@platform AND campaign_name=@campaign", params: { client: p.client, month: p.month, platform: p.platform, campaign: p.campaign }, types: { client: 'STRING', month: 'STRING', platform: 'STRING', campaign: 'STRING' } }),
