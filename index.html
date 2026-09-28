@@ -567,14 +567,17 @@ function statePill(bu,proj){
       var btn=document.getElementById("planSaveBtn");btn.disabled=true;btn.textContent="Guardando...";
       try{
         await api("planned_add",{month:monthSel.value,platform:plat,campaign:name,notas:notas});
+        if(!PLANNED[plat])PLANNED[plat]=[];
+        var _ex=PLANNED[plat].filter(function(x){return x.name===name;})[0];
+        if(_ex){_ex.notas=notas;}else{PLANNED[plat].push({name:name,notas:notas});}
         closePlannedForm();
-        await loadData();
+        render();
       }catch(e){alert("No se pudo guardar: "+((e&&e.message)||e));}
       btn.disabled=false;btn.textContent="Agregar";
     }
     async function delPlanned(plat,name){
       if(!confirm("¿Eliminar la campaña planificada \""+name+"\"?"))return;
-      try{await api("planned_del",{month:monthSel.value,platform:plat,campaign:name});await loadData();}
+      try{await api("planned_del",{month:monthSel.value,platform:plat,campaign:name});PLANNED[plat]=(PLANNED[plat]||[]).filter(function(x){return x.name!==name;});render();}
       catch(e){alert("No se pudo eliminar: "+((e&&e.message)||e));}
     }
 
