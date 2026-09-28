@@ -188,6 +188,17 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
 .plan-inp{width:118px;text-align:right;font-family:var(--font-b);font-size:13px;border:1.5px solid var(--uke-gris-suave);border-radius:6px;padding:6px 9px;background:#fff}
 .plan-inp:focus{outline:none;border-color:var(--uke-rojo);background:#FFF7F9}
 .plan-inp.empty{border-style:dashed;color:#999}
+    .planned-row{background:#FAFAFB}
+    .planned-row .camp-name{color:#555}
+    .plan-chip{display:inline-block;margin-left:6px;font-size:10px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:#8a6d00;background:#FFF3CD;border-radius:10px;padding:1px 7px;vertical-align:middle}
+    .plan-notas{color:#666;font-size:12.5px;font-style:italic}
+    .nonota{color:#bbb;font-style:normal}
+    .pill.wait{background:#FFF3CD;color:#8a6d00}
+    .grp-lbl{vertical-align:middle}
+    .add-plan{float:right;margin-top:-2px;border:1px dashed rgba(255,255,255,.7);background:rgba(255,255,255,.12);color:#fff;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-b)}
+    .add-plan:hover{background:rgba(255,255,255,.25)}
+    .del-plan{border:none;background:none;color:#c0392b;cursor:pointer;font-size:13px;padding:0 4px;opacity:.55}
+    .del-plan:hover{opacity:1}
 .pill{display:inline-block;border-radius:var(--r-pill);padding:2px 9px;font-size:11px;font-weight:700;font-family:var(--font-d)}
 .pill.ok{background:#E3F3EB;color:var(--uke-verde)}.pill.warn{background:#FBEEDB;color:var(--uke-ambar)}
 .pill.hot{background:#FCE0E6;color:var(--uke-rojo)}.pill.mut{background:var(--uke-gris-suave);color:var(--uke-gris-cuerpo)}
@@ -349,7 +360,7 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
 </div>
 
 <script>
-const LS_PREFIX="mp_prune_cl_v2_"; let MANUAL_TARGET=null;function manualTarget(){return (MANUAL_TARGET!=null&&!isNaN(MANUAL_TARGET))?Number(MANUAL_TARGET):0;}
+const LS_PREFIX="mp_prune_cl_v2_"; let MANUAL_TARGET=null;var PLANNED={};function manualTarget(){return (MANUAL_TARGET!=null&&!isNaN(MANUAL_TARGET))?Number(MANUAL_TARGET):0;}
 const PLATFORMS=[
   {key:"meta", label:"Meta Ads",   color:"#E30233"},
   {key:"gads", label:"Google Ads", color:"#1689C0"},
@@ -505,13 +516,13 @@ async function loadData(){if(!CURRENT_CLIENT){return;}
   document.getElementById("body").innerHTML=`<tr><td colspan="6"><div class="loading"><div class="spinner"></div>Consultando prune_cl…</div></td></tr>`;
   try{
     const P={from:MB.start_date,to:MB.end_date};
-    const[camps,daily,ga4,budRows,actC,tgtRows]=await Promise.all([
+    const[camps,daily,ga4,budRows,actC,tgtRows,plannedRows]=await Promise.all([
       api("pacing_campaigns",P),
       api("pacing_daily",P),
       api("ga4_totals",P),
-      api("budgets_get",{month:monthSel.value}),api("active_campaigns",P),api("target_get",{month:monthSel.value})
+      api("budgets_get",{month:monthSel.value}),api("active_campaigns",P),api("target_get",{month:monthSel.value}),api("planned_get",{month:monthSel.value})
     ]);
-    MANUAL_TARGET=(tgtRows&&tgtRows[0]&&tgtRows[0].amount!=null)?Number(tgtRows[0].amount):null;const B={};(budRows||[]).forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});
+    MANUAL_TARGET=(tgtRows&&tgtRows[0]&&tgtRows[0].amount!=null)?Number(tgtRows[0].amount):null;PLANNED={};(plannedRows||[]).forEach(function(pr){var g=pr.platform;if(!PLANNED[g])PLANNED[g]=[];PLANNED[g].push({name:pr.campaign_name,notas:pr.notas});});const B={};(budRows||[]).forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});
     if(Object.keys(B).length===0 && MB.isCur){const pd=new Date(MB.first.getFullYear(),MB.first.getMonth()-1,1);const prevYm=pd.getFullYear()+"-"+String(pd.getMonth()+1).padStart(2,"0");try{const prevRows=await api("budgets_get",{month:prevYm});if(prevRows&&prevRows.length){prevRows.forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});prevRows.forEach(r=>{setBudget(monthSel.value,r.platform,r.campaign,+r.amount||0);});}}catch(e){}}BUDGETS=B;
     ACTIVE_CP=new Set((actC||[]).map(function(r){return r.grp+"|"+r.name;}));const C={meta:[],gads:[],ttk:[],pin:[]}, D={meta:{},gads:{},ttk:{},pin:{}};
     camps.forEach(r=>{if(C[r.grp])C[r.grp].push({name:r.name,spend:+r.spend||0});});
@@ -534,6 +545,40 @@ function statePill(bu,proj){
   return['ok','En ritmo'];
 }
 
+    function closePlannedForm(){var o=document.getElementById("planOv");if(o)o.style.display="none";}
+    function openPlannedForm(plat,lbl){
+      var ov=document.getElementById("planOv");
+      document.getElementById("planPlat").value=plat;
+      document.getElementById("planPlatLbl").textContent=lbl;
+      document.getElementById("planName").value="";
+      document.getElementById("planNotas").value="";
+      document.getElementById("planSaveBtn").onclick=savePlanned;
+      document.getElementById("planCancelBtn").onclick=closePlannedForm;
+      ov.onclick=function(e){if(e.target.id==="planOv")closePlannedForm();};
+      document.getElementById("planName").onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();savePlanned();}};
+      ov.style.display="flex";
+      setTimeout(function(){document.getElementById("planName").focus();},50);
+    }
+    async function savePlanned(){
+      var plat=document.getElementById("planPlat").value;
+      var name=document.getElementById("planName").value.trim();
+      var notas=document.getElementById("planNotas").value.trim();
+      if(!name){document.getElementById("planName").focus();return;}
+      var btn=document.getElementById("planSaveBtn");btn.disabled=true;btn.textContent="Guardando...";
+      try{
+        await api("planned_add",{month:monthSel.value,platform:plat,campaign:name,notas:notas});
+        closePlannedForm();
+        await loadData();
+      }catch(e){alert("No se pudo guardar: "+((e&&e.message)||e));}
+      btn.disabled=false;btn.textContent="Agregar";
+    }
+    async function delPlanned(plat,name){
+      if(!confirm("¿Eliminar la campaña planificada \""+name+"\"?"))return;
+      try{await api("planned_del",{month:monthSel.value,platform:plat,campaign:name});await loadData();}
+      catch(e){alert("No se pudo eliminar: "+((e&&e.message)||e));}
+    }
+
+
 function render(){
   if(!DATA)return;
   const ym=monthSel.value, showAll=false;
@@ -544,10 +589,10 @@ function render(){
   PLATFORMS.forEach(p=>{
     const camps=(DATA.camps[p.key]||[]).slice().sort((a,b)=>b.spend-a.spend);
     const platSpent=camps.reduce((s,c)=>s+c.spend,0); grandSpent+=platSpent;
-    const platPlan=platBudgetTotal(ym,p.key); if(!camps.length&&platPlan===0){return;}
+    const platPlan=platBudgetTotal(ym,p.key); if(!camps.length&&platPlan===0&&!((PLANNED[p.key]||[]).length)){return;}
     // group header
     const gr=document.createElement("tr");gr.className="grp-row "+p.key;
-    gr.innerHTML=`<td colspan="6">${p.label}</td>`;body.appendChild(gr);
+    gr.innerHTML=`<td colspan="6"><span class="grp-lbl">${p.label}</span><button class="add-plan" data-plat="${p.key}" data-lbl="${p.label}">+ Campaña planificada</button></td>`;body.appendChild(gr);
     // rows
     const visible=camps.filter(c=> showAll || c.spend>0 || getBudget(ym,p.key,c.name)!=="");
     if(visible.length===0){
@@ -569,6 +614,14 @@ function render(){
         <td data-neg="${!isPast&&ritmo<0}">${isPast?"&mdash;":(bu>0?fmtMoney(ritmo):"&mdash;")}</td>
         <td><span class="pill ${cls}">${txt}</span></td>`;
       body.appendChild(tr);
+    });
+    var _rn={};camps.forEach(function(c){_rn[c.name]=1;});
+    (PLANNED[p.key]||[]).forEach(function(pl){
+      if(_rn[pl.name])return;
+      var ptr=document.createElement("tr");ptr.className="planned-row";
+      var pbu=getBudget(ym,p.key,pl.name);
+      ptr.innerHTML=`<td><span class="stdot off"></span><span class="camp-name">${clEsc(pl.name)}</span> <span class="plan-chip">Planificada</span></td><td><input class="plan-inp ${pbu===""?"empty":""}" type="number" min="0" step="1000" placeholder="0"${isPast?" disabled":""} value="${pbu}" data-plat="${p.key}" data-name="${encodeURIComponent(pl.name)}"></td><td colspan="3" class="plan-notas">${pl.notas?clEsc(pl.notas):'<span class=\'nonota\'>Sin notas</span>'}</td><td><span class="pill wait">Por implementar</span> <button class="del-plan" data-plat="${p.key}" data-name="${encodeURIComponent(pl.name)}" title="Eliminar">✕</button></td>`;
+      body.appendChild(ptr);
     });
     // subtotal
     const sIdeal=platPlan*tFrac, sProj=dEl>0?platSpent/dEl*dTot:0, sPerDay=dEl>0?platSpent/dEl:0, sRitmo=(platPlan-platSpent)/daysLeft;
@@ -600,6 +653,8 @@ function render(){
     inp.addEventListener("change",render);inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();render();}}); // full re-render (updates subtotals/pills) on blur/enter
   });
 
+    body.querySelectorAll(".add-plan").forEach(function(b){b.addEventListener("click",function(){openPlannedForm(b.dataset.plat,b.dataset.lbl);});});
+  body.querySelectorAll(".del-plan").forEach(function(b){b.addEventListener("click",function(){delPlanned(b.dataset.plat,decodeURIComponent(b.dataset.name));});});
   body.querySelectorAll(".plan-ok").forEach(function(btn){btn.addEventListener("click",function(){var inp=btn.parentNode.querySelector(".plan-inp");if(inp){setBudget(ym,inp.dataset.plat,decodeURIComponent(inp.dataset.name),inp.value);flagSaved();}render();});});grandSpentCache=grandSpent;
   renderSummary(grandSpent);
   drawChart(grandPlan);
@@ -1041,5 +1096,21 @@ document.getElementById("footPeriod").textContent=`${MB.start_date} → ${MB.end
 loadData();
 initClientFlow();
 </script>
+
+<div id="planOv" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;padding:24px;width:min(420px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.25);font-family:var(--font-b);">
+    <div style="font-family:var(--font-h);font-size:18px;margin-bottom:2px;">Nueva campaña planificada</div>
+    <div style="color:#888;font-size:13px;margin-bottom:16px;">Plataforma: <b id="planPlatLbl"></b></div>
+    <input type="hidden" id="planPlat">
+    <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">Nombre de la campaña</label>
+    <input id="planName" type="text" placeholder="Ej: Spring Sale - Prospecting" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1.5px solid var(--uke-gris-suave);border-radius:8px;font-size:14px;margin-bottom:14px;">
+    <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">Notas <span style="color:#aaa;">(guía para el analista)</span></label>
+    <textarea id="planNotas" rows="3" placeholder="Objetivo, audiencia, creatividades, fechas..." style="width:100%;box-sizing:border-box;padding:9px 11px;border:1.5px solid var(--uke-gris-suave);border-radius:8px;font-size:14px;resize:vertical;margin-bottom:18px;"></textarea>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button id="planCancelBtn" style="padding:9px 16px;border:1.5px solid var(--uke-gris-suave);background:#fff;border-radius:8px;cursor:pointer;font-size:14px;">Cancelar</button>
+      <button id="planSaveBtn" style="padding:9px 18px;border:none;background:var(--uke-rojo);color:#fff;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">Agregar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
