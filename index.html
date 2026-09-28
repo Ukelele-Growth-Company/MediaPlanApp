@@ -200,6 +200,16 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
     .add-plan:hover{background:var(--uke-rojo);color:#fff}
     .del-plan{border:none;background:none;color:#c0392b;cursor:pointer;font-size:13px;padding:0 4px;opacity:.55}
     .del-plan:hover{opacity:1}
+    .exp-btn{border:none;background:none;cursor:pointer;color:#aaa;font-size:10px;margin-right:5px;padding:0;width:12px;vertical-align:middle}
+    .exp-btn:hover{color:var(--uke-rojo)}
+    .adset-row td{background:#FCFCFD;border-bottom:1px solid #F3F3F5;font-size:12.5px;color:#555}
+    .adset-name{padding-left:40px !important;color:#666}
+    .adset-inp{width:100px;text-align:right;font-family:var(--font-b);font-size:12px;border:1.5px solid #E5E5E5;border-radius:6px;padding:4px 8px}
+    .adset-inp:focus{outline:none;border-color:var(--uke-rojo);background:#FFF7F9}
+    .adset-inp.empty{border-style:dashed;color:#999}
+    .adset-empty{color:#bbb;font-style:italic;padding-left:40px !important}
+    .plan-derived{font-weight:700;color:#444}
+    .derived-tag{display:inline-block;margin-left:6px;font-size:9px;text-transform:uppercase;letter-spacing:.3px;color:#8a6d00;background:#FFF3CD;border-radius:8px;padding:1px 6px;vertical-align:middle}
 .pill{display:inline-block;border-radius:var(--r-pill);padding:2px 9px;font-size:11px;font-weight:700;font-family:var(--font-d)}
 .pill.ok{background:#E3F3EB;color:var(--uke-verde)}.pill.warn{background:#FBEEDB;color:var(--uke-ambar)}
 .pill.hot{background:#FCE0E6;color:var(--uke-rojo)}.pill.mut{background:var(--uke-gris-suave);color:var(--uke-gris-cuerpo)}
@@ -409,7 +419,14 @@ const modePrefix = () => DEMO ? LS_PREFIX+"demo__" : LS_PREFIX;
 // ---- budgets ----
 // DEMO: localStorage (namespaced, por navegador). REAL: cache BUDGETS del mes cargado,
 // respaldado en BigQuery (prune_cl.media_plan_budgets) -> compartido por todo el equipo.
-let BUDGETS={};              // key `plat__campaign` -> monto (number), del mes cargado
+let BUDGETS={};
+let ADSETS={}, ABUD={}, EXPANDED={}, _abTimers={};
+function akey(plat,camp,aset){return plat+"\x1f"+camp+"\x1f"+aset;}
+function getAdsetBudget(plat,camp,aset){var v=ABUD[akey(plat,camp,aset)];return (v==null)?"":String(v);}
+function adsetSum(plat,camp){var pre=plat+"\x1f"+camp+"\x1f",s=0;for(var k in ABUD){if(k.indexOf(pre)===0)s+=+ABUD[k]||0;}return s;}
+function hasAdsetBudget(plat,camp){var pre=plat+"\x1f"+camp+"\x1f";for(var k in ABUD){if(k.indexOf(pre)===0&&(+ABUD[k]>0))return true;}return false;}
+function campaignPlan(ym,plat,camp){return hasAdsetBudget(plat,camp)?adsetSum(plat,camp):(+getBudget(ym,plat,camp)||0);}
+function setAdsetBudget(ym,plat,camp,aset,val){var k=akey(plat,camp,aset);if(val===""||val==null)delete ABUD[k];else ABUD[k]=Number(val);if(typeof DEMO!=="undefined"&&DEMO)return;clearTimeout(_abTimers[k]);_abTimers[k]=setTimeout(function(){api("adset_budget_set",{month:ym,platform:plat,campaign:camp,adset:aset,amount:(val===""||val==null)?null:Number(val)}).then(function(){flagSaved();}).catch(function(){flagError();});},500);}              // key `plat__campaign` -> monto (number), del mes cargado
 const bkeyC=(plat,name)=>plat+"__"+name;
 const bKey=(ym,plat,name)=>modePrefix()+ym+"__"+plat+"__"+encodeURIComponent(name); // sólo demo
 function getBudget(ym,plat,name){
@@ -435,7 +452,7 @@ function monthBudgetTotal(ym){
 }
 function platBudgetTotal(ym,plat){
   if(DEMO)return scanTotal(modePrefix()+ym+"__"+plat+"__");
-  return Object.keys(BUDGETS).filter(k=>k.startsWith(plat+"__")).reduce((s,k)=>s+(+BUDGETS[k]||0),0);
+  var seen={}, tot=0, pre=plat+"\x1f";for(var ak in ABUD){if(ak.indexOf(pre)===0){var cmp=ak.split("\x1f")[1];if(!seen[cmp]){seen[cmp]=1;tot+=adsetSum(plat,cmp);}}}Object.keys(BUDGETS).forEach(function(k){if(k.indexOf(plat+"__")===0){var cmp=k.slice((plat+"__").length);if(!seen[cmp])tot+=(+BUDGETS[k]||0);}});return tot;
 }
 function clearMonthBudgets(ym){const pre=modePrefix()+ym+"__";const del=[]; // sólo demo (reset ejemplo)
   for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(pre))del.push(k);}
@@ -517,14 +534,14 @@ async function loadData(){if(!CURRENT_CLIENT){return;}
   document.getElementById("body").innerHTML=`<tr><td colspan="6"><div class="loading"><div class="spinner"></div>Cargando datos…</div></td></tr>`;
   try{
     const P={from:MB.start_date,to:MB.end_date};
-    const[camps,daily,ga4,budRows,actC,tgtRows,plannedRows]=await Promise.all([
+    const[camps,daily,ga4,budRows,actC,tgtRows,plannedRows,asetRows,abudRows]=await Promise.all([
       api("pacing_campaigns",P),
       api("pacing_daily",P),
       api("ga4_totals",P),
-      api("budgets_get",{month:monthSel.value}),api("active_campaigns",P),api("target_get",{month:monthSel.value}),api("planned_get",{month:monthSel.value})
+      api("budgets_get",{month:monthSel.value}),api("active_campaigns",P),api("target_get",{month:monthSel.value}),api("planned_get",{month:monthSel.value}),api("pacing_adsets",P),api("adset_budgets_get",{month:monthSel.value})
     ]);
     MANUAL_TARGET=(tgtRows&&tgtRows[0]&&tgtRows[0].amount!=null)?Number(tgtRows[0].amount):null;PLANNED={};(plannedRows||[]).forEach(function(pr){var g=pr.platform;if(!PLANNED[g])PLANNED[g]=[];PLANNED[g].push({name:pr.campaign_name,notas:pr.notas});});const B={};(budRows||[]).forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});
-    if(Object.keys(B).length===0 && MB.isCur){const pd=new Date(MB.first.getFullYear(),MB.first.getMonth()-1,1);const prevYm=pd.getFullYear()+"-"+String(pd.getMonth()+1).padStart(2,"0");try{const prevRows=await api("budgets_get",{month:prevYm});if(prevRows&&prevRows.length){prevRows.forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});prevRows.forEach(r=>{setBudget(monthSel.value,r.platform,r.campaign,+r.amount||0);});}}catch(e){}}BUDGETS=B;
+    if(Object.keys(B).length===0 && MB.isCur){const pd=new Date(MB.first.getFullYear(),MB.first.getMonth()-1,1);const prevYm=pd.getFullYear()+"-"+String(pd.getMonth()+1).padStart(2,"0");try{const prevRows=await api("budgets_get",{month:prevYm});if(prevRows&&prevRows.length){prevRows.forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});prevRows.forEach(r=>{setBudget(monthSel.value,r.platform,r.campaign,+r.amount||0);});}}catch(e){}}ADSETS={};(asetRows||[]).forEach(function(r){var kk=r.grp+"\x1f"+r.name;if(!ADSETS[kk])ADSETS[kk]=[];ADSETS[kk].push({name:r.aset,cons:+r.cons||0});});ABUD={};(abudRows||[]).forEach(function(r){ABUD[akey(r.platform,r.campaign,r.ad_set)]=+r.amount||0;});BUDGETS=B;
     ACTIVE_CP=new Set((actC||[]).map(function(r){return r.grp+"|"+r.name;}));const C={meta:[],gads:[],ttk:[],pin:[]}, D={meta:{},gads:{},ttk:{},pin:{}};
     camps.forEach(r=>{if(C[r.grp])C[r.grp].push({name:r.name,spend:+r.spend||0});});
     daily.forEach(r=>{if(D[r.grp])D[r.grp][r.date]=+r.spend||0;});
@@ -603,21 +620,32 @@ function render(){
       const tr=document.createElement("tr");tr.innerHTML=`<td colspan="6" style="color:#999;font-style:italic">Sin campañas con inversión este mes</td>`;body.appendChild(tr);
     }
     visible.forEach(c=>{
-      const bu=parseFloat(getBudget(ym,p.key,c.name))||0;
+      const bu=campaignPlan(ym,p.key,c.name);
       const ep=pct(c.spend,bu), ideal=bu*tFrac, proj=dEl>0?c.spend/dEl*dTot:0, perDay=dEl>0?c.spend/dEl:0, ritmo=(bu-c.spend)/daysLeft;
       const[cls,txt]=statePill(bu,proj);
       const bar=Math.min(ep,100);
       const tr=document.createElement("tr");
       tr.innerHTML=`
-        <td><span class="stdot ${ACTIVE_CP.has(p.key+"|"+c.name)?"on":"off"}"></span><span class="camp-name">${c.name}</span></td>
-        <td><input class="plan-inp ${getBudget(ym,p.key,c.name)===""?'empty':''}" type="number" min="0" step="1000" placeholder="0"${isPast?" disabled":""}
-             value="${getBudget(ym,p.key,c.name)}" data-plat="${p.key}" data-name="${encodeURIComponent(c.name)}"></td>
+        <td><button class="exp-btn" data-plat="${p.key}" data-name="${encodeURIComponent(c.name)}">${EXPANDED[p.key+"\x1f"+c.name]?"▾":"▸"}</button><span class="stdot ${ACTIVE_CP.has(p.key+"|"+c.name)?"on":"off"}"></span><span class="camp-name">${c.name}</span></td>
+        <td>${hasAdsetBudget(p.key,c.name)?`<span class="plan-derived" title="Suma de conjuntos de anuncios">${fmtMoney(adsetSum(p.key,c.name))} <span class="derived-tag">adsets</span></span>`:`<input class="plan-inp ${getBudget(ym,p.key,c.name)===""?'empty':''}" type="number" min="0" step="1000" placeholder="0"${isPast?" disabled":""} value="${getBudget(ym,p.key,c.name)}" data-plat="${p.key}" data-name="${encodeURIComponent(c.name)}">`}</td>
         <td>${fmtMoney(c.spend)}<div class="progress"><span style="width:${bar}%;background:${p.color}"></span></div></td>
         <td>${bu>0?ep.toFixed(0)+"%":"—"}</td>
         
         <td data-neg="${!isPast&&ritmo<0}">${isPast?"&mdash;":(bu>0?fmtMoney(ritmo):"&mdash;")}</td>
         <td><span class="pill ${cls}">${txt}</span></td>`;
       body.appendChild(tr);
+      var _ck=p.key+"\x1f"+c.name;
+      if(EXPANDED[_ck]){
+        var _as=(ADSETS[p.key+"\x1f"+c.name]||[]).slice().sort(function(a,b){return b.cons-a.cons;});
+        if(!_as.length){var _er=document.createElement("tr");_er.className="adset-row";_er.innerHTML='<td colspan="6" class="adset-empty">Sin conjuntos con inversión este mes</td>';body.appendChild(_er);}
+        _as.forEach(function(_s){
+          var _abu=getAdsetBudget(p.key,c.name,_s.name);
+          var _aep=(+_abu>0)?pct(_s.cons,+_abu):0;
+          var _sr=document.createElement("tr");_sr.className="adset-row";
+          _sr.innerHTML='<td class="adset-name">↳ '+clEsc(_s.name)+'</td>'+'<td><input class="adset-inp '+(_abu===""?"empty":"")+'" type="number" min="0" step="500" placeholder="0"'+(isPast?" disabled":"")+' value="'+_abu+'" data-plat="'+p.key+'" data-camp="'+encodeURIComponent(c.name)+'" data-aset="'+encodeURIComponent(_s.name)+'"></td>'+'<td>'+fmtMoney(_s.cons)+'</td>'+'<td>'+((+_abu>0)?_aep.toFixed(0)+"%":"—")+'</td>'+'<td></td><td></td>';
+          body.appendChild(_sr);
+        });
+      }
     });
     var _rn={};camps.forEach(function(c){_rn[c.name]=1;});
     (PLANNED[p.key]||[]).forEach(function(pl){
@@ -660,7 +688,9 @@ function render(){
     inp.addEventListener("change",render);inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();render();}}); // full re-render (updates subtotals/pills) on blur/enter
   });
 
-    body.querySelectorAll(".add-plan").forEach(function(b){b.addEventListener("click",function(){openPlannedForm(b.dataset.plat,b.dataset.lbl);});});
+    body.querySelectorAll(".exp-btn").forEach(function(b){b.addEventListener("click",function(){var ck=b.dataset.plat+"\x1f"+decodeURIComponent(b.dataset.name);EXPANDED[ck]=!EXPANDED[ck];render();});});
+  body.querySelectorAll(".adset-inp").forEach(function(inp){inp.addEventListener("input",function(){setAdsetBudget(ym,inp.dataset.plat,decodeURIComponent(inp.dataset.camp),decodeURIComponent(inp.dataset.aset),inp.value);inp.classList.toggle("empty",inp.value==="");});inp.addEventListener("change",render);inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();render();}});});
+  body.querySelectorAll(".add-plan").forEach(function(b){b.addEventListener("click",function(){openPlannedForm(b.dataset.plat,b.dataset.lbl);});});
   body.querySelectorAll(".del-plan").forEach(function(b){b.addEventListener("click",function(){delPlanned(b.dataset.plat,decodeURIComponent(b.dataset.name));});});
   body.querySelectorAll(".plan-ok").forEach(function(btn){btn.addEventListener("click",function(){var inp=btn.parentNode.querySelector(".plan-inp");if(inp){setBudget(ym,inp.dataset.plat,decodeURIComponent(inp.dataset.name),inp.value);flagSaved();}render();});});grandSpentCache=grandSpent;
   renderSummary(grandSpent);
