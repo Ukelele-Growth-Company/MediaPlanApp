@@ -626,7 +626,7 @@ function render(){
       const bar=Math.min(ep,100);
       const tr=document.createElement("tr");
       tr.innerHTML=`
-        <td><button class="exp-btn" data-plat="${p.key}" data-name="${encodeURIComponent(c.name)}">${EXPANDED[p.key+"\x1f"+c.name]?"▾":"▸"}</button><span class="stdot ${ACTIVE_CP.has(p.key+"|"+c.name)?"on":"off"}"></span><span class="camp-name">${c.name}</span></td>
+        <td>${p.key!=='gads'?`<button class="exp-btn" data-plat="${p.key}" data-name="${encodeURIComponent(c.name)}">${EXPANDED[p.key+"\x1f"+c.name]?"▾":"▸"}</button>`:''}<span class="stdot ${ACTIVE_CP.has(p.key+"|"+c.name)?"on":"off"}"></span><span class="camp-name">${c.name}</span></td>
         <td>${hasAdsetBudget(p.key,c.name)?`<span class="plan-derived" title="Suma de conjuntos de anuncios">${fmtMoney(adsetSum(p.key,c.name))} <span class="derived-tag">adsets</span></span>`:`<input class="plan-inp ${getBudget(ym,p.key,c.name)===""?'empty':''}" type="number" min="0" step="1000" placeholder="0"${isPast?" disabled":""} value="${getBudget(ym,p.key,c.name)}" data-plat="${p.key}" data-name="${encodeURIComponent(c.name)}">`}</td>
         <td>${fmtMoney(c.spend)}<div class="progress"><span style="width:${bar}%;background:${p.color}"></span></div></td>
         <td>${bu>0?ep.toFixed(0)+"%":"—"}</td>
@@ -635,14 +635,22 @@ function render(){
         <td><span class="pill ${cls}">${txt}</span></td>`;
       body.appendChild(tr);
       var _ck=p.key+"\x1f"+c.name;
-      if(EXPANDED[_ck]){
+      if(EXPANDED[_ck]&&p.key!=='gads'){
         var _as=(ADSETS[p.key+"\x1f"+c.name]||[]).slice().sort(function(a,b){return b.cons-a.cons;});
         if(!_as.length){var _er=document.createElement("tr");_er.className="adset-row";_er.innerHTML='<td colspan="6" class="adset-empty">Sin conjuntos con inversión este mes</td>';body.appendChild(_er);}
         _as.forEach(function(_s){
           var _abu=getAdsetBudget(p.key,c.name,_s.name);
-          var _aep=(+_abu>0)?pct(_s.cons,+_abu):0;
+          var _bu=(+_abu)||0;
+          var _ep=pct(_s.cons,_bu), _proj=dEl>0?_s.cons/dEl*dTot:0, _ritmo=(_bu-_s.cons)/daysLeft;
+          var _st=statePill(_bu,_proj), _cls=_st[0], _txt=_st[1];
+          var _bar=Math.min(_ep,100);
           var _sr=document.createElement("tr");_sr.className="adset-row";
-          _sr.innerHTML='<td class="adset-name">↳ '+clEsc(_s.name)+'</td>'+'<td><input class="adset-inp '+(_abu===""?"empty":"")+'" type="number" min="0" step="500" placeholder="0"'+(isPast?" disabled":"")+' value="'+_abu+'" data-plat="'+p.key+'" data-camp="'+encodeURIComponent(c.name)+'" data-aset="'+encodeURIComponent(_s.name)+'"></td>'+'<td>'+fmtMoney(_s.cons)+'</td>'+'<td>'+((+_abu>0)?_aep.toFixed(0)+"%":"—")+'</td>'+'<td></td><td></td>';
+          _sr.innerHTML='<td class="adset-name">↳ '+clEsc(_s.name)+'</td>'
+            +'<td><input class="adset-inp '+(_abu===""?"empty":"")+'" type="number" min="0" step="500" placeholder="0"'+(isPast?" disabled":"")+' value="'+_abu+'" data-plat="'+p.key+'" data-camp="'+encodeURIComponent(c.name)+'" data-aset="'+encodeURIComponent(_s.name)+'"></td>'
+            +'<td>'+fmtMoney(_s.cons)+'<div class="progress"><span style="width:'+_bar+'%;background:'+p.color+'"></span></div></td>'
+            +'<td>'+(_bu>0?_ep.toFixed(0)+"%":"—")+'</td>'
+            +'<td data-neg="'+(!isPast&&_ritmo<0)+'">'+(isPast?"—":(_bu>0?fmtMoney(_ritmo):"—"))+'</td>'
+            +'<td><span class="pill '+_cls+'">'+_txt+'</span></td>';
           body.appendChild(_sr);
         });
       }
