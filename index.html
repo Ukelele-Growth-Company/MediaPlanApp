@@ -195,8 +195,9 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
     .nonota{color:#bbb;font-style:normal}
     .pill.wait{background:#FFF3CD;color:#8a6d00}
     .grp-lbl{vertical-align:middle}
-    .add-plan{float:right;margin-top:-2px;border:1px dashed rgba(255,255,255,.7);background:rgba(255,255,255,.12);color:#fff;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-b)}
-    .add-plan:hover{background:rgba(255,255,255,.25)}
+    .addplan-row td{padding:9px 12px;background:#fff;border-bottom:1px solid #F0F0F2}
+    .add-plan{display:inline-flex;align-items:center;gap:6px;border:1.5px dashed var(--uke-rojo);background:#FFF7F9;color:var(--uke-rojo);border-radius:8px;padding:8px 15px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:var(--font-b)}
+    .add-plan:hover{background:var(--uke-rojo);color:#fff}
     .del-plan{border:none;background:none;color:#c0392b;cursor:pointer;font-size:13px;padding:0 4px;opacity:.55}
     .del-plan:hover{opacity:1}
 .pill{display:inline-block;border-radius:var(--r-pill);padding:2px 9px;font-size:11px;font-weight:700;font-family:var(--font-d)}
@@ -595,7 +596,7 @@ function render(){
     const platPlan=platBudgetTotal(ym,p.key); if(!camps.length&&platPlan===0&&!((PLANNED[p.key]||[]).length)){return;}
     // group header
     const gr=document.createElement("tr");gr.className="grp-row "+p.key;
-    gr.innerHTML=`<td colspan="6"><span class="grp-lbl">${p.label}</span><button class="add-plan" data-plat="${p.key}" data-lbl="${p.label}">+ Campaña planificada</button></td>`;body.appendChild(gr);
+    gr.innerHTML=`<td colspan="6">${p.label}</td>`;body.appendChild(gr);
     // rows
     const visible=camps.filter(c=> showAll || c.spend>0 || getBudget(ym,p.key,c.name)!=="");
     if(visible.length===0){
@@ -626,6 +627,9 @@ function render(){
       ptr.innerHTML=`<td><span class="stdot off"></span><span class="camp-name">${clEsc(pl.name)}</span> <span class="plan-chip">Planificada</span></td><td><input class="plan-inp ${pbu===""?"empty":""}" type="number" min="0" step="1000" placeholder="0"${isPast?" disabled":""} value="${pbu}" data-plat="${p.key}" data-name="${encodeURIComponent(pl.name)}"></td><td colspan="3" class="plan-notas">${pl.notas?clEsc(pl.notas):'<span class=\'nonota\'>Sin notas</span>'}</td><td><span class="pill wait">Por implementar</span> <button class="del-plan" data-plat="${p.key}" data-name="${encodeURIComponent(pl.name)}" title="Eliminar">✕</button></td>`;
       body.appendChild(ptr);
     });
+    var atr=document.createElement("tr");atr.className="addplan-row";
+    atr.innerHTML=`<td colspan="6"><button class="add-plan" data-plat="${p.key}" data-lbl="${p.label}">+ Agregar campaña planificada</button></td>`;
+    body.appendChild(atr);
     // subtotal
     const sIdeal=platPlan*tFrac, sProj=dEl>0?platSpent/dEl*dTot:0, sPerDay=dEl>0?platSpent/dEl:0, sRitmo=(platPlan-platSpent)/daysLeft;
     const[scls,stxt]=statePill(platPlan,sProj);
