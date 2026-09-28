@@ -624,9 +624,9 @@ function render(){
       const ep=pct(c.spend,bu), ideal=bu*tFrac, proj=dEl>0?c.spend/dEl*dTot:0, perDay=dEl>0?c.spend/dEl:0, ritmo=(bu-c.spend)/daysLeft;
       const[cls,txt]=statePill(bu,proj);
       const bar=Math.min(ep,100);
-      const tr=document.createElement("tr");
+      const tr=document.createElement("tr");tr.className="camp-row clickable"+(EXPANDED[p.key+"\x1f"+c.name]?" open":"");tr.dataset.plat=p.key;tr.dataset.cname=encodeURIComponent(c.name);
       tr.innerHTML=`
-        <td>${p.key!=='gads'?`<button class="exp-btn" data-plat="${p.key}" data-name="${encodeURIComponent(c.name)}">${EXPANDED[p.key+"\x1f"+c.name]?"▾":"▸"}</button>`:''}<span class="stdot ${ACTIVE_CP.has(p.key+"|"+c.name)?"on":"off"}"></span><span class="camp-name">${c.name}</span></td>
+        <td><span class="caret"></span><span class="stdot ${ACTIVE_CP.has(p.key+"|"+c.name)?"on":"off"}"></span><span class="camp-name">${c.name}</span></td>
         <td>${hasAdsetBudget(p.key,c.name)?`<span class="plan-derived" title="Suma de conjuntos de anuncios">${fmtMoney(adsetSum(p.key,c.name))} <span class="derived-tag">adsets</span></span>`:`<input class="plan-inp ${getBudget(ym,p.key,c.name)===""?'empty':''}" type="number" min="0" step="1000" placeholder="0"${isPast?" disabled":""} value="${getBudget(ym,p.key,c.name)}" data-plat="${p.key}" data-name="${encodeURIComponent(c.name)}">`}</td>
         <td>${fmtMoney(c.spend)}<div class="progress"><span style="width:${bar}%;background:${p.color}"></span></div></td>
         <td>${bu>0?ep.toFixed(0)+"%":"—"}</td>
@@ -635,7 +635,7 @@ function render(){
         <td><span class="pill ${cls}">${txt}</span></td>`;
       body.appendChild(tr);
       var _ck=p.key+"\x1f"+c.name;
-      if(EXPANDED[_ck]&&p.key!=='gads'){
+      if(EXPANDED[_ck]){
         var _as=(ADSETS[p.key+"\x1f"+c.name]||[]).slice().sort(function(a,b){return b.cons-a.cons;});
         if(!_as.length){var _er=document.createElement("tr");_er.className="adset-row";_er.innerHTML='<td colspan="6" class="adset-empty">Sin conjuntos con inversión este mes</td>';body.appendChild(_er);}
         _as.forEach(function(_s){
@@ -696,7 +696,7 @@ function render(){
     inp.addEventListener("change",render);inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();render();}}); // full re-render (updates subtotals/pills) on blur/enter
   });
 
-    body.querySelectorAll(".exp-btn").forEach(function(b){b.addEventListener("click",function(){var ck=b.dataset.plat+"\x1f"+decodeURIComponent(b.dataset.name);EXPANDED[ck]=!EXPANDED[ck];render();});});
+    body.querySelectorAll(".camp-row.clickable").forEach(function(row){row.addEventListener("click",function(e){if(e.target.closest(".plan-inp"))return;var ck=row.dataset.plat+"\x1f"+decodeURIComponent(row.dataset.cname);EXPANDED[ck]=!EXPANDED[ck];render();});});
   body.querySelectorAll(".adset-inp").forEach(function(inp){inp.addEventListener("input",function(){setAdsetBudget(ym,inp.dataset.plat,decodeURIComponent(inp.dataset.camp),decodeURIComponent(inp.dataset.aset),inp.value);inp.classList.toggle("empty",inp.value==="");});inp.addEventListener("change",render);inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();render();}});});
   body.querySelectorAll(".add-plan").forEach(function(b){b.addEventListener("click",function(){openPlannedForm(b.dataset.plat,b.dataset.lbl);});});
   body.querySelectorAll(".del-plan").forEach(function(b){b.addEventListener("click",function(){delPlanned(b.dataset.plat,decodeURIComponent(b.dataset.name));});});
