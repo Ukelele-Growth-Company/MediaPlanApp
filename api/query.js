@@ -35,6 +35,10 @@ const QUERIES = {
     query: "MERGE \`" + PROJECT + ".cross_clients.media_plan_assignments\` T USING (SELECT @client client, @platform platform, @campaign campaign, @plan plan_id) S ON T.client=S.client AND T.platform=S.platform AND T.campaign=S.campaign WHEN MATCHED AND (S.plan_id IS NULL OR S.plan_id='general') THEN DELETE WHEN MATCHED THEN UPDATE SET plan_id=S.plan_id, updated_at=CURRENT_TIMESTAMP() WHEN NOT MATCHED AND S.plan_id IS NOT NULL AND S.plan_id!='general' THEN INSERT (client,platform,campaign,plan_id,updated_at) VALUES (S.client,S.platform,S.campaign,S.plan_id,CURRENT_TIMESTAMP())",
     params: { client:p.client, platform:p.platform, campaign:p.campaign, plan:(p.plan||null) }, types: { client:'STRING', platform:'STRING', campaign:'STRING', plan:'STRING' }
   }),
+  all_campaigns: p => ({
+    query: "SELECT DISTINCT " + PCASE + " grp, campaign_name name FROM " + VCAMP + " WHERE " + PLAT + " AND cost>0 AND date >= DATE_SUB(CURRENT_DATE(), INTERVAL 24 MONTH)",
+    params: {}
+  }),
   pacing_adsets: p => ({
     query: "SELECT " + PCASE + " grp, campaign_name name, ad_set_name aset, SUM(cost) cons FROM " + VAD + " WHERE " + PLAT + " AND date BETWEEN @from AND @to GROUP BY grp, name, aset HAVING cons > 0",
     params: { from: p.from, to: p.to }
