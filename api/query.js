@@ -15,6 +15,26 @@ const ADS = '`' + PROJECT + '.cross_clients.complete_ads_report`';
 const VCAMP = '`' + PROJECT + '.__DS__.v_media_campaign`';
 const VAD = '`' + PROJECT + '.__DS__.v_media_ad`';
 const QUERIES = {
+  plans_get: p => ({
+    query: "SELECT plan_id, name FROM \`" + PROJECT + ".cross_clients.media_plans\` WHERE client=@client ORDER BY created_at",
+    params: { client: p.client }, types: { client:'STRING' }
+  }),
+  plan_add: p => ({
+    query: "INSERT INTO \`" + PROJECT + ".cross_clients.media_plans\` (client,plan_id,name,created_at,updated_at) VALUES (@client,@plan,@name,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP())",
+    params: { client:p.client, plan:p.plan, name:p.name }, types: { client:'STRING', plan:'STRING', name:'STRING' }
+  }),
+  plan_del: p => ({
+    query: "DELETE FROM \`" + PROJECT + ".cross_clients.media_plans\` WHERE client=@client AND plan_id=@plan; DELETE FROM \`" + PROJECT + ".cross_clients.media_plan_assignments\` WHERE client=@client AND plan_id=@plan",
+    params: { client:p.client, plan:p.plan }, types: { client:'STRING', plan:'STRING' }
+  }),
+  assignments_get: p => ({
+    query: "SELECT platform, campaign, plan_id FROM \`" + PROJECT + ".cross_clients.media_plan_assignments\` WHERE client=@client",
+    params: { client:p.client }, types: { client:'STRING' }
+  }),
+  assignment_set: p => ({
+    query: "MERGE \`" + PROJECT + ".cross_clients.media_plan_assignments\` T USING (SELECT @client client, @platform platform, @campaign campaign, @plan plan_id) S ON T.client=S.client AND T.platform=S.platform AND T.campaign=S.campaign WHEN MATCHED AND (S.plan_id IS NULL OR S.plan_id='general') THEN DELETE WHEN MATCHED THEN UPDATE SET plan_id=S.plan_id, updated_at=CURRENT_TIMESTAMP() WHEN NOT MATCHED AND S.plan_id IS NOT NULL AND S.plan_id!='general' THEN INSERT (client,platform,campaign,plan_id,updated_at) VALUES (S.client,S.platform,S.campaign,S.plan_id,CURRENT_TIMESTAMP())",
+    params: { client:p.client, platform:p.platform, campaign:p.campaign, plan:(p.plan||null) }, types: { client:'STRING', platform:'STRING', campaign:'STRING', plan:'STRING' }
+  }),
   pacing_adsets: p => ({
     query: "SELECT " + PCASE + " grp, campaign_name name, ad_set_name aset, SUM(cost) cons FROM " + VAD + " WHERE " + PLAT + " AND date BETWEEN @from AND @to GROUP BY grp, name, aset HAVING cons > 0",
     params: { from: p.from, to: p.to }
@@ -32,8 +52,8 @@ const QUERIES = {
   planned_get: p => ({ query: "SELECT platform, campaign_name, notas FROM `" + PROJECT + ".cross_clients.planned_campaigns` WHERE client=@client AND month=@month", params: { client: p.client, month: p.month }, types: { client: 'STRING', month: 'STRING' } }),
   planned_add: p => ({ query: "MERGE `" + PROJECT + ".cross_clients.planned_campaigns` T USING (SELECT @client client, @month month, @platform platform, @campaign campaign_name, @notas notas) S ON T.client=S.client AND T.month=S.month AND T.platform=S.platform AND T.campaign_name=S.campaign_name WHEN MATCHED THEN UPDATE SET notas=S.notas, updated_at=CURRENT_TIMESTAMP() WHEN NOT MATCHED THEN INSERT (client,month,platform,campaign_name,notas,created_at,updated_at) VALUES (S.client,S.month,S.platform,S.campaign_name,S.notas,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP())", params: { client: p.client, month: p.month, platform: p.platform, campaign: p.campaign, notas: (p.notas||null) }, types: { client: 'STRING', month: 'STRING', platform: 'STRING', campaign: 'STRING', notas: 'STRING' } }),
   planned_del: p => ({ query: "DELETE FROM `" + PROJECT + ".cross_clients.planned_campaigns` WHERE client=@client AND month=@month AND platform=@platform AND campaign_name=@campaign", params: { client: p.client, month: p.month, platform: p.platform, campaign: p.campaign }, types: { client: 'STRING', month: 'STRING', platform: 'STRING', campaign: 'STRING' } }),
-  target_get: p => ({ query: "SELECT amount, currency FROM `" + PROJECT + ".cross_clients.media_plan_targets` WHERE client=@client AND month=@month LIMIT 1", params: { client: p.client, month: p.month }, types: { client: 'STRING', month: 'STRING' } }),
-  target_set: p => ({ query: "MERGE `" + PROJECT + ".cross_clients.media_plan_targets` T USING (SELECT @client client, @month month, @amount amount, @currency currency) S ON T.client=S.client AND T.month=S.month WHEN MATCHED AND S.amount IS NULL THEN DELETE WHEN MATCHED THEN UPDATE SET amount=S.amount, currency=S.currency, updated_at=CURRENT_TIMESTAMP() WHEN NOT MATCHED AND S.amount IS NOT NULL THEN INSERT (client,month,amount,currency,updated_at) VALUES (S.client,S.month,S.amount,S.currency,CURRENT_TIMESTAMP())", params: { client: p.client, month: p.month, amount: (p.amount==null||p.amount==='')?null:Number(p.amount), currency: p.currency||null }, types: { client: 'STRING', month: 'STRING', amount: 'FLOAT64', currency: 'STRING' } }),
+  target_get: p => ({ query: "SELECT amount, currency FROM `" + PROJECT + ".cross_clients.media_plan_targets` WHERE client=@client AND month=@month AND plan_id=@plan LIMIT 1", params: { client: p.client, month: p.month, plan: (p.plan||'general') }, types: { client: 'STRING', month: 'STRING', plan: 'STRING' } }),
+  target_set: p => ({ query: "MERGE `" + PROJECT + ".cross_clients.media_plan_targets` T USING (SELECT @client client, @month month, @plan plan_id, @amount amount, @currency currency) S ON T.client=S.client AND T.month=S.month AND T.plan_id=S.plan_id WHEN MATCHED AND S.amount IS NULL THEN DELETE WHEN MATCHED THEN UPDATE SET amount=S.amount, currency=S.currency, updated_at=CURRENT_TIMESTAMP() WHEN NOT MATCHED AND S.amount IS NOT NULL THEN INSERT (client,month,plan_id,amount,currency,updated_at) VALUES (S.client,S.month,S.plan_id,S.amount,S.currency,CURRENT_TIMESTAMP())", params: { client: p.client, month: p.month, plan: (p.plan||'general'), amount: (p.amount==null||p.amount==='')?null:Number(p.amount), currency: p.currency||null }, types: { client: 'STRING', month: 'STRING', plan: 'STRING', amount: 'FLOAT64', currency: 'STRING' } }),
   currency: () => ({ query: "SELECT IF(LOGICAL_OR(use_converted), 'USD', UPPER(MAX(account_currency))) AS ccy FROM " + VCAMP + " WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 60 DAY)", params: {} }),
   clients: () => ({ query: "WITH ai AS (SELECT client_normalized_name AS cli, ANY_VALUE(vertical) AS vertical, ANY_VALUE(ukelele_group) AS grp, LOGICAL_OR(NOT has_terminated) AS active FROM `" + PROJECT + ".cross_clients.accounts_info` GROUP BY cli), plats AS (SELECT business_name AS cli, STRING_AGG(DISTINCT platform ORDER BY platform) AS platforms FROM `" + PROJECT + ".cross_clients.complete_ads_report` WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 180 DAY) GROUP BY cli) SELECT ai.cli AS client, plats.platforms AS platforms, ai.vertical AS vertical, ai.grp AS grp, ai.active AS active FROM ai LEFT JOIN plats ON ai.cli = plats.cli ORDER BY ai.vertical NULLS LAST, ai.cli", params: {} }),
 
