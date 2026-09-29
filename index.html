@@ -1138,7 +1138,7 @@ function openAssign(){var o=document.getElementById("assignOv");if(!o)return;var
 function closeAssign(){var o=document.getElementById("assignOv");if(o)o.style.display="none";DATA=null;loadData();}
 async function selectClient(ds,name){
   if(!/^[a-z0-9_]+$/.test(ds||""))return;
-  CURRENT_CLIENT=ds;name=name||clPretty(ds);var _ck="mp_ccy2_"+ds,_cached=null;try{_cached=localStorage.getItem(_ck);}catch(e){}function _applyCcy(x){x=(x||"USD").toUpperCase();CURRENCY=(x.indexOf("USD")===0||["COL","CCL","BLUE","MEP"].indexOf(x)>=0)?"USD":x;MONEY_SYM=(CURRENCY==="USD")?"US$":(CURRENCY==="ARS")?"$":CURRENCY+" ";}if(_cached){_applyCcy(_cached);}else{try{var _cr=await api("currency");var _rw=(_cr&&_cr[0]&&_cr[0].ccy)||"USD";_applyCcy(_rw);try{localStorage.setItem(_ck,_rw);}catch(e){}}catch(e){_applyCcy("USD");}}
+  CURRENT_CLIENT=ds;name=name||clPretty(ds);var _ck="mp_ccy2_"+ds,_cached=null;try{_cached=localStorage.getItem(_ck);}catch(e){}function _applyCcy(x){x=(x||"USD").toUpperCase();CURRENCY=(x.indexOf("USD")===0||["COL","CCL","BLUE","MEP"].indexOf(x)>=0)?"USD":x;MONEY_SYM=(CURRENCY==="USD")?"US$":(CURRENCY==="ARS")?"$":CURRENCY+" ";}if(_cached){_applyCcy(_cached);}else{_applyCcy("USD");api("currency").then(function(_cr){var _rw=(_cr&&_cr[0]&&_cr[0].ccy)||"USD";_applyCcy(_rw);try{localStorage.setItem(_ck,_rw);}catch(e){}try{if(typeof DATA!=="undefined"&&DATA)render();}catch(e){}}).catch(function(){});}
   updateClientChrome(name,ds);CLIENT_NAME=name;
   openPlanPicker(ds,name);
 }
