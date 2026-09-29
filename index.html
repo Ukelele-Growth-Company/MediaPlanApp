@@ -1155,8 +1155,7 @@ document.getElementById("loginKey").addEventListener("keydown",e=>{if(e.key==="E
 
 MB=monthBounds(monthSel.value);
 document.getElementById("footPeriod").textContent=`${MB.start_date} → ${MB.end_date}`;
-loadData();
-initClientFlow();
+if(document.readyState!=="loading"){loadData();initClientFlow();}else{window.addEventListener("DOMContentLoaded",function(){loadData();initClientFlow();});}
 </script>
 
 <div id="planOv" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;">
