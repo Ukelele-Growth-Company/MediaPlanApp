@@ -414,6 +414,14 @@ const monthSel=document.getElementById("monthSel");
   const l=d.toLocaleDateString("es-CL",{month:"long",year:"numeric"});
   const o=document.createElement("option");o.value=v;o.textContent=(i===0)?"Mes actual":l.charAt(0).toUpperCase()+l.slice(1);monthSel.appendChild(o);}})();
 
+// ---- crear plan del mes siguiente ----
+function _ymOf(dt){return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");}
+function _monLbl(ym){var pp=ym.split("-").map(Number);var dd=new Date(pp[0],pp[1]-1,1);var l=dd.toLocaleDateString("es-CL",{month:"long",year:"numeric"});return l.charAt(0).toUpperCase()+l.slice(1);}
+var _lastMonth=null,_mkBusy=false;
+(function(){var now=new Date();var nxYm=_ymOf(new Date(now.getFullYear(),now.getMonth()+1,1));var op=document.createElement("option");op.value="__mknext__";op.textContent="＋ Crear plan de "+_monLbl(nxYm);monthSel.appendChild(op);})();
+function addFutureOption(ym){if(monthSel.querySelector('option[value="'+ym+'"]'))return;var op=document.createElement("option");op.value=ym;op.textContent=_monLbl(ym)+" (próximo)";monthSel.insertBefore(op,monthSel.firstChild);}
+async function createNextMonthPlan(){if(_mkBusy){return;}_mkBusy=true;var now=new Date();var src=_ymOf(now);var dst=_ymOf(new Date(now.getFullYear(),now.getMonth()+1,1));try{await api("clone_month",{from:src,to:dst});addFutureOption(dst);monthSel.value=dst;onMonthChange();if(typeof flagSaved==="function")flagSaved();}catch(e){monthSel.value=(_lastMonth||src);if(typeof flagError==="function")flagError();}finally{_mkBusy=false;}}
+
 function monthBounds(ym){const[y,m]=ym.split("-").map(Number);
   const first=new Date(y,m-1,1),last=new Date(y,m,0),today=new Date();today.setHours(0,0,0,0);
   const isCur=(y===today.getFullYear()&&(m-1)===today.getMonth());
@@ -1087,7 +1095,7 @@ function syncModeUI(){
     : "Datos en vivo desde BigQuery ("+(CURRENT_CLIENT||"prune_cl")+") · valores en "+((MONEY_SYM||"US$").trim())+"";
 }
 
-function onMonthChange(){MB=monthBounds(monthSel.value);
+function onMonthChange(){if(monthSel.value==="__mknext__"){createNextMonthPlan();return;}_lastMonth=monthSel.value;MB=monthBounds(monthSel.value);
   document.getElementById("footPeriod").textContent=`${MB.start_date} → ${MB.end_date}`;loadData();}
 monthSel.addEventListener("change",onMonthChange);
 
