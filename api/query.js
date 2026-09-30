@@ -126,6 +126,11 @@ const QUERIES = {
     query: "MERGE `" + PROJECT + ".cross_clients.media_plan_budgets` T USING (SELECT @client client, @plan plan_id, @month month, @platform platform, @campaign campaign, @amount amount) S ON T.client=S.client AND T.plan_id=S.plan_id AND T.month=S.month AND T.platform=S.platform AND T.campaign=S.campaign WHEN MATCHED AND S.amount IS NULL THEN DELETE WHEN MATCHED THEN UPDATE SET amount=S.amount, updated_at=CURRENT_TIMESTAMP() WHEN NOT MATCHED AND S.amount IS NOT NULL THEN INSERT (client,plan_id,month,platform,campaign,amount,updated_at) VALUES (S.client,S.plan_id,S.month,S.platform,S.campaign,S.amount,CURRENT_TIMESTAMP())",
     params: { client: p.client, plan: (p.plan||'general'), month: p.month, platform: p.platform, campaign: p.campaign, amount: (p.amount == null || p.amount === '') ? null : Number(p.amount) },
     types: { client:'STRING', plan:'STRING', month: 'STRING', platform: 'STRING', campaign: 'STRING', amount: 'FLOAT64' }
+  }),
+  clone_month: p => ({
+    query: "MERGE `" + PROJECT + ".cross_clients.media_plan_budgets` T USING (SELECT client,plan_id,@dst month,platform,campaign,amount FROM `" + PROJECT + ".cross_clients.media_plan_budgets` WHERE client=@client AND month=@src) S ON T.client=S.client AND T.plan_id=S.plan_id AND T.month=S.month AND T.platform=S.platform AND T.campaign=S.campaign WHEN NOT MATCHED THEN INSERT (client,plan_id,month,platform,campaign,amount,updated_at) VALUES (S.client,S.plan_id,S.month,S.platform,S.campaign,S.amount,CURRENT_TIMESTAMP()); MERGE `" + PROJECT + ".cross_clients.media_plan_targets` T USING (SELECT client,@dst month,amount,currency FROM `" + PROJECT + ".cross_clients.media_plan_targets` WHERE client=@client AND month=@src) S ON T.client=S.client AND T.month=S.month WHEN NOT MATCHED THEN INSERT (client,month,amount,currency,updated_at) VALUES (S.client,S.month,S.amount,S.currency,CURRENT_TIMESTAMP()); MERGE `" + PROJECT + ".cross_clients.planned_campaigns` T USING (SELECT client,@dst month,platform,campaign_name,notas FROM `" + PROJECT + ".cross_clients.planned_campaigns` WHERE client=@client AND month=@src) S ON T.client=S.client AND T.month=S.month AND T.platform=S.platform AND T.campaign_name=S.campaign_name WHEN NOT MATCHED THEN INSERT (client,month,platform,campaign_name,notas,created_at,updated_at) VALUES (S.client,S.month,S.platform,S.campaign_name,S.notas,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP()); MERGE `" + PROJECT + ".cross_clients.media_plan_adset_budgets` T USING (SELECT client,@dst month,platform,campaign,ad_set,amount FROM `" + PROJECT + ".cross_clients.media_plan_adset_budgets` WHERE client=@client AND month=@src) S ON T.client=S.client AND T.month=S.month AND T.platform=S.platform AND T.campaign=S.campaign AND T.ad_set=S.ad_set WHEN NOT MATCHED THEN INSERT (client,month,platform,campaign,ad_set,amount,updated_at) VALUES (S.client,S.month,S.platform,S.campaign,S.ad_set,S.amount,CURRENT_TIMESTAMP());",
+    params: { client: p.client, src: p.from, dst: p.to },
+    types: { client:'STRING', src:'STRING', dst:'STRING' }
   })
 };
 
@@ -165,7 +170,7 @@ module.exports = async (req, res) => {
     var __q = query.split('__DS__').join(__ds);
     const opts = { query: __q, params, location: 'US' };
     if (types) opts.types = types;
-    let rows; try { const _r = await client().query(opts); rows = _r[0]; } catch(_e){ var _isW=/_set$|_add$|_del$|_delete$|_create$|_assign|_upsert/.test(body.kind); if(!_isW&&(body.kind==='budgets_get'||String((_e&&_e.message)||'').indexOf('Not found')>=0)){ rows=[]; } else { throw _e; } }
+    let rows; try { const _r = await client().query(opts); rows = _r[0]; } catch(_e){ var _isW=/_set$|_add$|_del$|_delete$|_create$|_assign|_upsert|clone/.test(body.kind); if(!_isW&&(body.kind==='budgets_get'||String((_e&&_e.message)||'').indexOf('Not found')>=0)){ rows=[]; } else { throw _e; } }
     res.status(200).json({ rows });
   } catch (e) {
     res.status(500).json({ error: (e && e.message) || 'Error de query' });
