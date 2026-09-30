@@ -430,7 +430,7 @@ const modePrefix = () => DEMO ? LS_PREFIX+"demo__" : LS_PREFIX;
 // respaldado en BigQuery (prune_cl.media_plan_budgets) -> compartido por todo el equipo.
 let BUDGETS={};
 let ADSETS={}, ABUD={}, EXPANDED={}, _abTimers={};
-var CURRENT_PLAN=null, CURRENT_PLAN_NAME="", PLANS_CACHE=[], CLIENT_NAME="", PENDING_PLAN=null, ASSIGN={}, ALL_CAMPS={}, ALL_PLANNED={}, HIST_CAMPS=null, FX={}, FXOV={};
+var CURRENT_PLAN=null, CURRENT_PLAN_NAME="", PLANS_CACHE=[], CLIENT_NAME="", PENDING_PLAN=null, ASSIGN={}, ALL_CAMPS={}, ALL_PLANNED={}, HIST_CAMPS=null, FX={}, FXOV={}, MONRATE={};
 function akey(plat,camp,aset){return plat+"\x1f"+camp+"\x1f"+aset;}
 function getAdsetBudget(plat,camp,aset){var v=ABUD[akey(plat,camp,aset)];return (v==null)?"":String(v);}
 function adsetSum(plat,camp){var pre=plat+"\x1f"+camp+"\x1f",s=0;for(var k in ABUD){if(k.indexOf(pre)===0)s+=+ABUD[k]||0;}return s;}
@@ -544,11 +544,11 @@ async function loadData(){if(!CURRENT_CLIENT){return;}
   document.getElementById("body").innerHTML=`<tr><td colspan="6"><div class="loading"><div class="spinner"></div>Cargando datos…</div></td></tr>`;
   try{
     const P={from:MB.start_date,to:MB.end_date};
-    const[camps,daily,ga4,budRows,actC,tgtRows,plannedRows,asetRows,abudRows,asgRows,fxRows,fxovRows]=await Promise.all([
+    const[camps,daily,ga4,budRows,actC,tgtRows,plannedRows,asetRows,abudRows,asgRows,fxRows,fxovRows,monRows]=await Promise.all([
       api("pacing_campaigns",P),
       api("pacing_daily",P),
       api("ga4_totals",P),
-      api("budgets_get",{month:monthSel.value}),api("active_campaigns",P),api("target_get",{month:monthSel.value,plan:CURRENT_PLAN}),api("planned_get",{month:monthSel.value}),api("pacing_adsets",P),api("adset_budgets_get",{month:monthSel.value}),api("assignments_get",{}),api("fx_rates",{}),api("fx_overrides_get",{})
+      api("budgets_get",{month:monthSel.value}),api("active_campaigns",P),api("target_get",{month:monthSel.value,plan:CURRENT_PLAN}),api("planned_get",{month:monthSel.value}),api("pacing_adsets",P),api("adset_budgets_get",{month:monthSel.value}),api("assignments_get",{}),api("fx_rates",{}),api("fx_overrides_get",{}),api("fx_month_get",{month:monthSel.value})
     ]);
     MANUAL_TARGET=(tgtRows&&tgtRows[0]&&tgtRows[0].amount!=null)?Number(tgtRows[0].amount):null;PLANNED={};(plannedRows||[]).forEach(function(pr){var g=pr.platform;if(!PLANNED[g])PLANNED[g]=[];PLANNED[g].push({name:pr.campaign_name,notas:pr.notas});});const B={};(budRows||[]).forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});
     if(Object.keys(B).length===0 && MB.isCur){const pd=new Date(MB.first.getFullYear(),MB.first.getMonth()-1,1);const prevYm=pd.getFullYear()+"-"+String(pd.getMonth()+1).padStart(2,"0");try{const prevRows=await api("budgets_get",{month:prevYm});if(prevRows&&prevRows.length){prevRows.forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});prevRows.forEach(r=>{setBudget(monthSel.value,r.platform,r.campaign,+r.amount||0);});}}catch(e){}}ADSETS={};(asetRows||[]).forEach(function(r){var kk=r.grp+"\x1f"+r.name;if(!ADSETS[kk])ADSETS[kk]=[];ADSETS[kk].push({name:r.aset,cons:+r.cons||0});});ABUD={};(abudRows||[]).forEach(function(r){ABUD[akey(r.platform,r.campaign,r.ad_set)]=+r.amount||0;});BUDGETS=B;
@@ -556,7 +556,7 @@ async function loadData(){if(!CURRENT_CLIENT){return;}
     camps.forEach(r=>{if(C[r.grp])C[r.grp].push({name:r.name,spend:+r.spend||0,rawspend:+r.rawspend||0,accy:r.accy});});
     daily.forEach(r=>{if(D[r.grp])D[r.grp][r.date]=+r.spend||0;});
     const g=ga4[0]||{};
-    FX={};(fxRows||[]).forEach(function(r){FX[r.grp]={native:r.native,rate:+r.rate||0,report:r.report};});FXOV={};(fxovRows||[]).forEach(function(r){FXOV[r.native]=+r.rate||0;});ASSIGN={};(asgRows||[]).forEach(function(r){ASSIGN[r.platform+"\x1f"+r.campaign]=r.plan_id;});
+    FX={};(fxRows||[]).forEach(function(r){FX[r.grp]={native:r.native,rate:+r.rate||0,report:r.report};});FXOV={};(fxovRows||[]).forEach(function(r){FXOV[r.native]=+r.rate||0;});MONRATE={};(monRows||[]).forEach(function(r){MONRATE[r.native]=+r.rate||0;});(function(){try{var _sc=secCur();if(_sc&&MB.isCur&&!(MONRATE[_sc]>0)){var _rr=secPipe();if(_rr>0){MONRATE[_sc]=_rr;api("fx_month_set",{month:monthSel.value,native:_sc,rate:_rr,source:"lazy"}).catch(function(){});}}}catch(e){}})();ASSIGN={};(asgRows||[]).forEach(function(r){ASSIGN[r.platform+"\x1f"+r.campaign]=r.plan_id;});
     ALL_CAMPS={};Object.keys(C).forEach(function(g){ALL_CAMPS[g]=C[g].slice();});
     ALL_PLANNED={};Object.keys(PLANNED).forEach(function(g){ALL_PLANNED[g]=(PLANNED[g]||[]).slice();});
     (function(){function _ip(g,nm){var pid=ASSIGN[g+"\x1f"+nm];return (CURRENT_PLAN&&CURRENT_PLAN!=='general')?(pid===CURRENT_PLAN):!pid;}Object.keys(C).forEach(function(g){C[g]=C[g].filter(function(c){return _ip(g,c.name);});});Object.keys(PLANNED).forEach(function(g){PLANNED[g]=(PLANNED[g]||[]).filter(function(pl){return _ip(g,pl.name);});});})();
@@ -1153,9 +1153,9 @@ function natSym(cur){return cur==='ARS'?'AR$':cur==='USD'?'US$':cur==='UYU'?'$U'
 function fmtNative(cur,n){return natSym(cur)+' '+Math.round(n).toLocaleString('es-AR');}
 function secCur(){for(var g in FX){if(FX[g]&&FX[g].native&&FX[g].report&&FX[g].native!==FX[g].report)return FX[g].native;}return null;}
 function secPipe(){var s=secCur();if(!s)return 0;for(var g in FX){if(FX[g]&&FX[g].native===s)return +FX[g].rate||0;}return 0;}
-function secRate(){var s=secCur();if(!s)return 0;if(FXOV[s]!=null&&FXOV[s]>0)return FXOV[s];return secPipe();}
+function secRate(){var s=secCur();if(!s)return 0;if(FXOV[s]!=null&&FXOV[s]>0)return FXOV[s];if(MONRATE[s]!=null&&MONRATE[s]>0)return MONRATE[s];return secPipe();}
 function natPlanTxt(plat,uyu){var s=secCur();if(!s||!(+uyu>0))return '';var r=secRate();if(!(r>0))return '';return '≈ '+fmtNative(s,(+uyu)*r);}
-function secBadge(){var s=secCur();if(!s)return '';var r=secRate();var rep=(typeof CURRENCY!=='undefined'?CURRENCY:'');var over=(FXOV[s]!=null&&FXOV[s]>0);return '<span class="fx-tb">1 '+natSym(rep)+' ≈ '+(r>0?r.toFixed(1):'?')+' '+natSym(s)+(over?' · manual':'')+'</span> <button type="button" class="fx-edit fx-edit-tb" data-native="'+s+'" data-pipe="'+secPipe()+'">TC</button>';}
+function secBadge(){var s=secCur();if(!s)return '';var r=secRate();var rep=(typeof CURRENCY!=='undefined'?CURRENCY:'');var src=(FXOV[s]!=null&&FXOV[s]>0)?' · manual':((MONRATE[s]!=null&&MONRATE[s]>0)?' · fijado del mes':' · auto');return '<span class="fx-tb">1 '+natSym(rep)+' ≈ '+(r>0?r.toFixed(1):'?')+' '+natSym(s)+src+'</span> <button type="button" class="fx-edit fx-edit-tb" data-native="'+s+'" data-pipe="'+secPipe()+'">TC</button>';}
 function fxBadge(plat){var f=FX[plat];if(!f||!f.native||f.native===f.report)return '';var r=fxRate(plat);var over=(FXOV[f.native]!=null&&FXOV[f.native]>0);return ' <span class="fx-badge">1 '+natSym(f.report)+' ≈ '+(r>0?r.toFixed(1):'?')+' '+natSym(f.native)+(over?' (manual)':'')+' <button type="button" class="fx-edit" data-native="'+f.native+'" data-pipe="'+(+f.rate||0)+'">TC</button></span>';}
 function openFxEdit(native,pipe){var o=document.getElementById("fxOv");if(!o)return;document.getElementById("fxNative").textContent=native;document.getElementById("fxNative2").textContent=native;document.getElementById("fxReport").textContent=(typeof CURRENCY!=="undefined"?CURRENCY:'');document.getElementById("fxReport2").textContent=(typeof CURRENCY!=="undefined"?CURRENCY:'');document.getElementById("fxPipe").textContent=(+pipe||0).toFixed(2);var inp=document.getElementById("fxInput");inp.value=(FXOV[native]!=null&&FXOV[native]>0)?FXOV[native]:'';inp.dataset.native=native;document.getElementById("fxSaveBtn").onclick=saveFx;document.getElementById("fxResetBtn").onclick=resetFx;document.getElementById("fxCancelBtn").onclick=closeFx;o.style.display="flex";setTimeout(function(){inp.focus();},50);}
 function closeFx(){var o=document.getElementById("fxOv");if(o)o.style.display="none";}
