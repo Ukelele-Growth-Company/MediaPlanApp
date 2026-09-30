@@ -15,6 +15,18 @@ const ADS = '`' + PROJECT + '.cross_clients.complete_ads_report`';
 const VCAMP = '`' + PROJECT + '.__DS__.v_media_campaign`';
 const VAD = '`' + PROJECT + '.__DS__.v_media_ad`';
 const QUERIES = {
+  fx_rates: p => ({
+    query: "WITH r AS (SELECT " + PCASE + " grp, MAX(account_currency) native, SUM(cost_raw) raw, SUM(cost) conv FROM " + VCAMP + " WHERE " + PLAT + " AND cost>0 AND date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY) GROUP BY grp) SELECT grp, native, SAFE_DIVIDE(raw,conv) rate, (SELECT MAX(reporting_currency) FROM \`" + PROJECT + ".cross_clients.media_config\` WHERE client='__DS__') report FROM r WHERE native IS NOT NULL",
+    params: {}
+  }),
+  fx_overrides_get: p => ({
+    query: "SELECT native, rate FROM \`" + PROJECT + ".cross_clients.fx_overrides\` WHERE client=@client",
+    params: { client: p.client }, types: { client:'STRING' }
+  }),
+  fx_override_set: p => ({
+    query: "MERGE \`" + PROJECT + ".cross_clients.fx_overrides\` T USING (SELECT @client client, @native native, @rate rate) S ON T.client=S.client AND T.native=S.native WHEN MATCHED AND S.rate IS NULL THEN DELETE WHEN MATCHED THEN UPDATE SET rate=S.rate, updated_at=CURRENT_TIMESTAMP() WHEN NOT MATCHED AND S.rate IS NOT NULL THEN INSERT (client,native,rate,updated_at) VALUES (S.client,S.native,S.rate,CURRENT_TIMESTAMP())",
+    params: { client:p.client, native:p.native, rate:(p.rate==null||p.rate===''?null:Number(p.rate)) }, types: { client:'STRING', native:'STRING', rate:'FLOAT64' }
+  }),
   plans_get: p => ({
     query: "SELECT plan_id, name FROM \`" + PROJECT + ".cross_clients.media_plans\` WHERE client=@client ORDER BY created_at",
     params: { client: p.client }, types: { client:'STRING' }
@@ -62,7 +74,7 @@ const QUERIES = {
   clients: () => ({ query: "WITH ai AS (SELECT client_normalized_name AS cli, ANY_VALUE(vertical) AS vertical, ANY_VALUE(ukelele_group) AS grp, LOGICAL_OR(NOT has_terminated) AS active FROM `" + PROJECT + ".cross_clients.accounts_info` GROUP BY cli), plats AS (SELECT business_name AS cli, STRING_AGG(DISTINCT platform ORDER BY platform) AS platforms FROM `" + PROJECT + ".cross_clients.complete_ads_report` WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 180 DAY) GROUP BY cli) SELECT ai.cli AS client, plats.platforms AS platforms, ai.vertical AS vertical, ai.grp AS grp, ai.active AS active FROM ai LEFT JOIN plats ON ai.cli = plats.cli ORDER BY ai.vertical NULLS LAST, ai.cli", params: {} }),
 
   pacing_campaigns: p => ({
-    query: `SELECT ${PCASE} grp, campaign_name name, SUM(cost) spend FROM ${VCAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to GROUP BY grp, name HAVING spend > 0`,
+    query: `SELECT ${PCASE} grp, campaign_name name, SUM(cost) spend, SUM(cost_raw) rawspend, MAX(account_currency) accy FROM ${VCAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to GROUP BY grp, name HAVING spend > 0`,
     params: { from: p.from, to: p.to }
   }),
   pacing_daily: p => ({
