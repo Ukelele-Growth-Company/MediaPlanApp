@@ -15,6 +15,14 @@ const ADS = '`' + PROJECT + '.cross_clients.complete_ads_report`';
 const VCAMP = '`' + PROJECT + '.__DS__.v_media_campaign`';
 const VAD = '`' + PROJECT + '.__DS__.v_media_ad`';
 const QUERIES = {
+  fx_month_get: p => ({
+    query: "SELECT native, rate FROM \`" + PROJECT + ".cross_clients.fx_month_rates\` WHERE client=@client AND month=@month",
+    params: { client: p.client, month: p.month }, types: { client:'STRING', month:'STRING' }
+  }),
+  fx_month_set: p => ({
+    query: "MERGE \`" + PROJECT + ".cross_clients.fx_month_rates\` T USING (SELECT @client client, @native native, @month month, @rate rate, @source source) S ON T.client=S.client AND T.native=S.native AND T.month=S.month WHEN MATCHED THEN UPDATE SET rate=S.rate, source=S.source, updated_at=CURRENT_TIMESTAMP() WHEN NOT MATCHED THEN INSERT (client,native,month,rate,source,updated_at) VALUES (S.client,S.native,S.month,S.rate,S.source,CURRENT_TIMESTAMP())",
+    params: { client:p.client, native:p.native, month:p.month, rate:(p.rate==null?null:Number(p.rate)), source:(p.source||'auto') }, types: { client:'STRING', native:'STRING', month:'STRING', rate:'FLOAT64', source:'STRING' }
+  }),
   fx_rates: p => ({
     query: "WITH r AS (SELECT " + PCASE + " grp, MAX(account_currency) native, SUM(cost_raw) raw, SUM(cost) conv FROM " + VCAMP + " WHERE " + PLAT + " AND cost>0 AND date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY) GROUP BY grp) SELECT grp, native, SAFE_DIVIDE(raw,conv) rate, (SELECT MAX(reporting_currency) FROM \`" + PROJECT + ".cross_clients.media_config\` WHERE client='__DS__') report FROM r WHERE native IS NOT NULL",
     params: {}
