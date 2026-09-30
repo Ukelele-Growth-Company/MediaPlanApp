@@ -450,7 +450,7 @@ function setBudget(ym,plat,name,val){
   if(val===""||val==null)delete BUDGETS[k]; else BUDGETS[k]=Number(val);
   clearTimeout(_bTimers[k]); // guardar en el backend, con debounce por campaña
   _bTimers[k]=setTimeout(()=>{
-    api("budget_set",{month:ym,platform:plat,campaign:name,amount:(val===""||val==null)?null:Number(val)})
+    api("budget_set",{month:ym,platform:plat,campaign:name,plan:CURRENT_PLAN,amount:(val===""||val==null)?null:Number(val)})
       .then(()=>flagSaved()).catch(()=>flagError());
   },500);
 }
@@ -548,10 +548,10 @@ async function loadData(){if(!CURRENT_CLIENT){return;}
       api("pacing_campaigns",P),
       api("pacing_daily",P),
       api("ga4_totals",P),
-      api("budgets_get",{month:monthSel.value}),api("active_campaigns",P),api("target_get",{month:monthSel.value,plan:CURRENT_PLAN}),api("planned_get",{month:monthSel.value}),api("pacing_adsets",P),api("adset_budgets_get",{month:monthSel.value}),api("assignments_get",{}),api("fx_rates",{}),api("fx_overrides_get",{}),api("fx_month_get",{month:monthSel.value})
+      api("budgets_get",{month:monthSel.value,plan:CURRENT_PLAN}),api("active_campaigns",P),api("target_get",{month:monthSel.value,plan:CURRENT_PLAN}),api("planned_get",{month:monthSel.value}),api("pacing_adsets",P),api("adset_budgets_get",{month:monthSel.value}),api("assignments_get",{}),api("fx_rates",{}),api("fx_overrides_get",{}),api("fx_month_get",{month:monthSel.value})
     ]);
     MANUAL_TARGET=(tgtRows&&tgtRows[0]&&tgtRows[0].amount!=null)?Number(tgtRows[0].amount):null;PLANNED={};(plannedRows||[]).forEach(function(pr){var g=pr.platform;if(!PLANNED[g])PLANNED[g]=[];PLANNED[g].push({name:pr.campaign_name,notas:pr.notas});});const B={};(budRows||[]).forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});
-    if(Object.keys(B).length===0 && MB.isCur){const pd=new Date(MB.first.getFullYear(),MB.first.getMonth()-1,1);const prevYm=pd.getFullYear()+"-"+String(pd.getMonth()+1).padStart(2,"0");try{const prevRows=await api("budgets_get",{month:prevYm});if(prevRows&&prevRows.length){prevRows.forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});prevRows.forEach(r=>{setBudget(monthSel.value,r.platform,r.campaign,+r.amount||0);});}}catch(e){}}ADSETS={};(asetRows||[]).forEach(function(r){var kk=r.grp+"\x1f"+r.name;if(!ADSETS[kk])ADSETS[kk]=[];ADSETS[kk].push({name:r.aset,cons:+r.cons||0});});ABUD={};(abudRows||[]).forEach(function(r){ABUD[akey(r.platform,r.campaign,r.ad_set)]=+r.amount||0;});BUDGETS=B;
+    if(Object.keys(B).length===0 && MB.isCur){const pd=new Date(MB.first.getFullYear(),MB.first.getMonth()-1,1);const prevYm=pd.getFullYear()+"-"+String(pd.getMonth()+1).padStart(2,"0");try{const prevRows=await api("budgets_get",{month:prevYm,plan:CURRENT_PLAN});if(prevRows&&prevRows.length){prevRows.forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});prevRows.forEach(r=>{setBudget(monthSel.value,r.platform,r.campaign,+r.amount||0);});}}catch(e){}}ADSETS={};(asetRows||[]).forEach(function(r){var kk=r.grp+"\x1f"+r.name;if(!ADSETS[kk])ADSETS[kk]=[];ADSETS[kk].push({name:r.aset,cons:+r.cons||0});});ABUD={};(abudRows||[]).forEach(function(r){ABUD[akey(r.platform,r.campaign,r.ad_set)]=+r.amount||0;});BUDGETS=B;
     ACTIVE_CP=new Set((actC||[]).map(function(r){return r.grp+"|"+r.name;}));const C={meta:[],gads:[],ttk:[],pin:[]}, D={meta:{},gads:{},ttk:{},pin:{}};
     camps.forEach(r=>{if(C[r.grp])C[r.grp].push({name:r.name,spend:+r.spend||0,rawspend:+r.rawspend||0,accy:r.accy});});
     daily.forEach(r=>{if(D[r.grp])D[r.grp][r.date]=+r.spend||0;});
