@@ -118,21 +118,14 @@ const QUERIES = {
     params: { name: p.name, from: p.from, to: p.to }
   }),
   budgets_get: p => ({
-    query: `SELECT platform, campaign, amount FROM ${BUD} WHERE month = @month`,
-    params: { month: p.month }
+    query: "SELECT platform, campaign, amount FROM `" + PROJECT + ".cross_clients.media_plan_budgets` WHERE client=@client AND plan_id=@plan AND month=@month",
+    params: { client: p.client, plan: (p.plan||'general'), month: p.month },
+    types: { client:'STRING', plan:'STRING', month:'STRING' }
   }),
   budget_set: p => ({
-    query: `MERGE ${BUD} T
-            USING (SELECT @month month, @platform platform, @campaign campaign, @amount amount) S
-            ON T.month = S.month AND T.platform = S.platform AND T.campaign = S.campaign
-            WHEN MATCHED AND S.amount IS NULL THEN DELETE
-            WHEN MATCHED THEN UPDATE SET amount = S.amount, updated_at = CURRENT_TIMESTAMP()
-            WHEN NOT MATCHED AND S.amount IS NOT NULL THEN
-              INSERT (month, platform, campaign, amount, updated_at)
-              VALUES (S.month, S.platform, S.campaign, S.amount, CURRENT_TIMESTAMP())`,
-    params: { month: p.month, platform: p.platform, campaign: p.campaign,
-              amount: (p.amount == null || p.amount === '') ? null : Number(p.amount) },
-    types: { month: 'STRING', platform: 'STRING', campaign: 'STRING', amount: 'FLOAT64' }
+    query: "MERGE `" + PROJECT + ".cross_clients.media_plan_budgets` T USING (SELECT @client client, @plan plan_id, @month month, @platform platform, @campaign campaign, @amount amount) S ON T.client=S.client AND T.plan_id=S.plan_id AND T.month=S.month AND T.platform=S.platform AND T.campaign=S.campaign WHEN MATCHED AND S.amount IS NULL THEN DELETE WHEN MATCHED THEN UPDATE SET amount=S.amount, updated_at=CURRENT_TIMESTAMP() WHEN NOT MATCHED AND S.amount IS NOT NULL THEN INSERT (client,plan_id,month,platform,campaign,amount,updated_at) VALUES (S.client,S.plan_id,S.month,S.platform,S.campaign,S.amount,CURRENT_TIMESTAMP())",
+    params: { client: p.client, plan: (p.plan||'general'), month: p.month, platform: p.platform, campaign: p.campaign, amount: (p.amount == null || p.amount === '') ? null : Number(p.amount) },
+    types: { client:'STRING', plan:'STRING', month: 'STRING', platform: 'STRING', campaign: 'STRING', amount: 'FLOAT64' }
   })
 };
 
@@ -172,7 +165,7 @@ module.exports = async (req, res) => {
     var __q = query.split('__DS__').join(__ds);
     const opts = { query: __q, params, location: 'US' };
     if (types) opts.types = types;
-    let rows; try { const _r = await client().query(opts); rows = _r[0]; } catch(_e){ if(body.kind==='budgets_get'||String((_e&&_e.message)||'').indexOf('Not found')>=0){ rows=[]; } else { throw _e; } }
+    let rows; try { const _r = await client().query(opts); rows = _r[0]; } catch(_e){ var _isW=/_set$|_add$|_del$|_delete$|_create$|_assign|_upsert/.test(body.kind); if(!_isW&&(body.kind==='budgets_get'||String((_e&&_e.message)||'').indexOf('Not found')>=0)){ rows=[]; } else { throw _e; } }
     res.status(200).json({ rows });
   } catch (e) {
     res.status(500).json({ error: (e && e.message) || 'Error de query' });
