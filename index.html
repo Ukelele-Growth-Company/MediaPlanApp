@@ -209,6 +209,11 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
     .adset-inp.empty{border-style:dashed;color:#999}
     .adset-empty{color:#bbb;font-style:italic;padding-left:40px !important}
     .plan-derived{font-weight:700;color:#444}
+    .nat{font-size:10.5px;color:#999;margin-top:2px;line-height:1.2;white-space:nowrap}
+    .natplan{color:#8a6d00}
+    .fx-badge{font-size:10px;font-weight:600;color:#f5f5f5;opacity:.95;margin-left:8px;font-family:var(--font-b)}
+    .fx-edit{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.15);color:#fff;border-radius:6px;padding:1px 6px;font-size:9px;cursor:pointer;margin-left:3px}
+    .fx-edit:hover{background:rgba(255,255,255,.32)}
     .derived-tag{display:inline-block;margin-left:6px;font-size:9px;text-transform:uppercase;letter-spacing:.3px;color:#8a6d00;background:#FFF3CD;border-radius:8px;padding:1px 6px;vertical-align:middle}
 .pill{display:inline-block;border-radius:var(--r-pill);padding:2px 9px;font-size:11px;font-weight:700;font-family:var(--font-d)}
 .pill.ok{background:#E3F3EB;color:var(--uke-verde)}.pill.warn{background:#FBEEDB;color:var(--uke-ambar)}
@@ -421,7 +426,7 @@ const modePrefix = () => DEMO ? LS_PREFIX+"demo__" : LS_PREFIX;
 // respaldado en BigQuery (prune_cl.media_plan_budgets) -> compartido por todo el equipo.
 let BUDGETS={};
 let ADSETS={}, ABUD={}, EXPANDED={}, _abTimers={};
-var CURRENT_PLAN=null, CURRENT_PLAN_NAME="", PLANS_CACHE=[], CLIENT_NAME="", PENDING_PLAN=null, ASSIGN={}, ALL_CAMPS={}, ALL_PLANNED={}, HIST_CAMPS=null;
+var CURRENT_PLAN=null, CURRENT_PLAN_NAME="", PLANS_CACHE=[], CLIENT_NAME="", PENDING_PLAN=null, ASSIGN={}, ALL_CAMPS={}, ALL_PLANNED={}, HIST_CAMPS=null, FX={}, FXOV={};
 function akey(plat,camp,aset){return plat+"\x1f"+camp+"\x1f"+aset;}
 function getAdsetBudget(plat,camp,aset){var v=ABUD[akey(plat,camp,aset)];return (v==null)?"":String(v);}
 function adsetSum(plat,camp){var pre=plat+"\x1f"+camp+"\x1f",s=0;for(var k in ABUD){if(k.indexOf(pre)===0)s+=+ABUD[k]||0;}return s;}
@@ -535,19 +540,19 @@ async function loadData(){if(!CURRENT_CLIENT){return;}
   document.getElementById("body").innerHTML=`<tr><td colspan="6"><div class="loading"><div class="spinner"></div>Cargando datos…</div></td></tr>`;
   try{
     const P={from:MB.start_date,to:MB.end_date};
-    const[camps,daily,ga4,budRows,actC,tgtRows,plannedRows,asetRows,abudRows,asgRows]=await Promise.all([
+    const[camps,daily,ga4,budRows,actC,tgtRows,plannedRows,asetRows,abudRows,asgRows,fxRows,fxovRows]=await Promise.all([
       api("pacing_campaigns",P),
       api("pacing_daily",P),
       api("ga4_totals",P),
-      api("budgets_get",{month:monthSel.value}),api("active_campaigns",P),api("target_get",{month:monthSel.value,plan:CURRENT_PLAN}),api("planned_get",{month:monthSel.value}),api("pacing_adsets",P),api("adset_budgets_get",{month:monthSel.value}),api("assignments_get",{})
+      api("budgets_get",{month:monthSel.value}),api("active_campaigns",P),api("target_get",{month:monthSel.value,plan:CURRENT_PLAN}),api("planned_get",{month:monthSel.value}),api("pacing_adsets",P),api("adset_budgets_get",{month:monthSel.value}),api("assignments_get",{}),api("fx_rates",{}),api("fx_overrides_get",{})
     ]);
     MANUAL_TARGET=(tgtRows&&tgtRows[0]&&tgtRows[0].amount!=null)?Number(tgtRows[0].amount):null;PLANNED={};(plannedRows||[]).forEach(function(pr){var g=pr.platform;if(!PLANNED[g])PLANNED[g]=[];PLANNED[g].push({name:pr.campaign_name,notas:pr.notas});});const B={};(budRows||[]).forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});
     if(Object.keys(B).length===0 && MB.isCur){const pd=new Date(MB.first.getFullYear(),MB.first.getMonth()-1,1);const prevYm=pd.getFullYear()+"-"+String(pd.getMonth()+1).padStart(2,"0");try{const prevRows=await api("budgets_get",{month:prevYm});if(prevRows&&prevRows.length){prevRows.forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});prevRows.forEach(r=>{setBudget(monthSel.value,r.platform,r.campaign,+r.amount||0);});}}catch(e){}}ADSETS={};(asetRows||[]).forEach(function(r){var kk=r.grp+"\x1f"+r.name;if(!ADSETS[kk])ADSETS[kk]=[];ADSETS[kk].push({name:r.aset,cons:+r.cons||0});});ABUD={};(abudRows||[]).forEach(function(r){ABUD[akey(r.platform,r.campaign,r.ad_set)]=+r.amount||0;});BUDGETS=B;
     ACTIVE_CP=new Set((actC||[]).map(function(r){return r.grp+"|"+r.name;}));const C={meta:[],gads:[],ttk:[],pin:[]}, D={meta:{},gads:{},ttk:{},pin:{}};
-    camps.forEach(r=>{if(C[r.grp])C[r.grp].push({name:r.name,spend:+r.spend||0});});
+    camps.forEach(r=>{if(C[r.grp])C[r.grp].push({name:r.name,spend:+r.spend||0,rawspend:+r.rawspend||0,accy:r.accy});});
     daily.forEach(r=>{if(D[r.grp])D[r.grp][r.date]=+r.spend||0;});
     const g=ga4[0]||{};
-    ASSIGN={};(asgRows||[]).forEach(function(r){ASSIGN[r.platform+"\x1f"+r.campaign]=r.plan_id;});
+    FX={};(fxRows||[]).forEach(function(r){FX[r.grp]={native:r.native,rate:+r.rate||0,report:r.report};});FXOV={};(fxovRows||[]).forEach(function(r){FXOV[r.native]=+r.rate||0;});ASSIGN={};(asgRows||[]).forEach(function(r){ASSIGN[r.platform+"\x1f"+r.campaign]=r.plan_id;});
     ALL_CAMPS={};Object.keys(C).forEach(function(g){ALL_CAMPS[g]=C[g].slice();});
     ALL_PLANNED={};Object.keys(PLANNED).forEach(function(g){ALL_PLANNED[g]=(PLANNED[g]||[]).slice();});
     (function(){function _ip(g,nm){var pid=ASSIGN[g+"\x1f"+nm];return (CURRENT_PLAN&&CURRENT_PLAN!=='general')?(pid===CURRENT_PLAN):!pid;}Object.keys(C).forEach(function(g){C[g]=C[g].filter(function(c){return _ip(g,c.name);});});Object.keys(PLANNED).forEach(function(g){PLANNED[g]=(PLANNED[g]||[]).filter(function(pl){return _ip(g,pl.name);});});})();
@@ -618,7 +623,7 @@ function render(){
     const platPlan=platBudgetTotal(ym,p.key); if(!camps.length&&platPlan===0&&!((PLANNED[p.key]||[]).length)){return;}
     // group header
     const gr=document.createElement("tr");gr.className="grp-row "+p.key;
-    gr.innerHTML=`<td colspan="6">${p.label}</td>`;body.appendChild(gr);
+    gr.innerHTML=`<td colspan="6">${p.label}${fxBadge(p.key)}</td>`;body.appendChild(gr);
     // rows
     const visible=camps.filter(c=> showAll || c.spend>0 || getBudget(ym,p.key,c.name)!=="");
     if(visible.length===0){
@@ -638,6 +643,7 @@ function render(){
         
         <td data-neg="${!isPast&&ritmo<0}">${isPast?"&mdash;":(bu>0?fmtMoney(ritmo):"&mdash;")}</td>
         <td><span class="pill ${cls}">${txt}</span></td>`;
+      (function(){var _fx=FX[p.key];if(_fx&&_fx.native&&_fx.native!==_fx.report){if(c.rawspend>0)tr.children[2].insertAdjacentHTML("beforeend",'<div class="nat">'+fmtNative(_fx.native,c.rawspend)+'</div>');var _pv=hasAdsetBudget(p.key,c.name)?adsetSum(p.key,c.name):(+getBudget(ym,p.key,c.name)||0);tr.children[1].insertAdjacentHTML("beforeend",'<div class="nat natplan">'+natPlanTxt(p.key,_pv)+'</div>');}})();
       body.appendChild(tr);
       var _ck=p.key+"\x1f"+c.name;
       if(EXPANDED[_ck]){
@@ -655,7 +661,7 @@ function render(){
             +'<td>'+fmtMoney(_s.cons)+'<div class="progress"><span style="width:'+_bar+'%;background:'+p.color+'"></span></div></td>'
             +'<td>'+(_bu>0?_ep.toFixed(0)+"%":"—")+'</td>'
             +'<td data-neg="'+(!isPast&&_ritmo<0)+'">'+(isPast?"—":(_bu>0?fmtMoney(_ritmo):"—"))+'</td>'
-            +'<td><span class="pill '+_cls+'">'+_txt+'</span></td>';
+            +'<td><span class="pill '+_cls+'">'+_txt+'</span></td>';(function(){var _fx=FX[p.key];if(_fx&&_fx.native&&_fx.native!==_fx.report){if(_s.cons>0)_sr.children[2].insertAdjacentHTML("beforeend",'<div class="nat">≈ '+fmtNative(_fx.native,_s.cons*fxRate(p.key))+'</div>');if(+_abu>0)_sr.children[1].insertAdjacentHTML("beforeend",'<div class="nat natplan">'+natPlanTxt(p.key,+_abu)+'</div>');}})();
           body.appendChild(_sr);
         });
       }
@@ -696,13 +702,14 @@ function render(){
     inp.addEventListener("input",()=>{
       setBudget(ym,inp.dataset.plat,decodeURIComponent(inp.dataset.name),inp.value);
       inp.classList.toggle("empty",inp.value==="");
-      flagSaved(); renderSummary(grandSpentCache); // light recompute
+      flagSaved(); renderSummary(grandSpentCache); var _np=inp.parentNode.querySelector(".natplan");if(_np)_np.textContent=natPlanTxt(inp.dataset.plat,inp.value); // light recompute
     });
     inp.addEventListener("change",render);inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();render();}}); // full re-render (updates subtotals/pills) on blur/enter
   });
 
     body.querySelectorAll(".camp-row.clickable").forEach(function(row){row.addEventListener("click",function(e){if(e.target.closest(".plan-inp"))return;var ck=row.dataset.plat+"\x1f"+decodeURIComponent(row.dataset.cname);EXPANDED[ck]=!EXPANDED[ck];render();});});
   body.querySelectorAll(".adset-inp").forEach(function(inp){inp.addEventListener("input",function(){setAdsetBudget(ym,inp.dataset.plat,decodeURIComponent(inp.dataset.camp),decodeURIComponent(inp.dataset.aset),inp.value);inp.classList.toggle("empty",inp.value==="");});inp.addEventListener("change",render);inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();render();}});});
+  body.querySelectorAll(".fx-edit").forEach(function(b){b.addEventListener("click",function(e){e.stopPropagation();openFxEdit(b.dataset.native,b.dataset.pipe);});});
   body.querySelectorAll(".add-plan").forEach(function(b){b.addEventListener("click",function(){openPlannedForm(b.dataset.plat,b.dataset.lbl);});});
   body.querySelectorAll(".del-plan").forEach(function(b){b.addEventListener("click",function(){delPlanned(b.dataset.plat,decodeURIComponent(b.dataset.name));});});
   body.querySelectorAll(".plan-ok").forEach(function(btn){btn.addEventListener("click",function(){var inp=btn.parentNode.querySelector(".plan-inp");if(inp){setBudget(ym,inp.dataset.plat,decodeURIComponent(inp.dataset.name),inp.value);flagSaved();}render();});});grandSpentCache=grandSpent;
@@ -1137,6 +1144,15 @@ async function createPlan(){var nm=document.getElementById("newPlanName").value.
 async function openAssign(){var o=document.getElementById("assignOv");if(!o)return;if(HIST_CAMPS===null){var _l0=document.getElementById("assignList");if(_l0)_l0.innerHTML='<div style="color:#888;padding:8px 0">Cargando campañas...</div>';o.style.display="flex";try{var _h=await api("all_campaigns",{});HIST_CAMPS={};(_h||[]).forEach(function(rr){(HIST_CAMPS[rr.grp]=HIST_CAMPS[rr.grp]||[]).push(rr.name);});}catch(e){HIST_CAMPS={};}}var list=document.getElementById("assignList");var opts='<option value="general">General / Sin asignar</option>'+PLANS_CACHE.map(function(p){return '<option value="'+clEsc(p.plan_id)+'">'+clEsc(p.name)+'</option>';}).join('');var rows='';PLATFORMS.forEach(function(p){var items=[],thisMonth={};(ALL_CAMPS[p.key]||[]).forEach(function(c){items.push(c.name);thisMonth[c.name]=1;});(ALL_PLANNED[p.key]||[]).forEach(function(pl){if(items.indexOf(pl.name)<0)items.push(pl.name);});((HIST_CAMPS&&HIST_CAMPS[p.key])||[]).forEach(function(nm){if(items.indexOf(nm)<0)items.push(nm);});items.sort(function(a,b){var oa=(typeof ACTIVE_CP!=="undefined"&&ACTIVE_CP&&ACTIVE_CP.has(p.key+"|"+a))?0:1;var ob=(typeof ACTIVE_CP!=="undefined"&&ACTIVE_CP&&ACTIVE_CP.has(p.key+"|"+b))?0:1;if(oa!==ob)return oa-ob;return a.toLowerCase()<b.toLowerCase()?-1:1;});if(!items.length)return;rows+='<div class="asg-grp" style="font-weight:700;color:'+p.color+';margin:14px 0 6px">'+p.label+'</div>';items.forEach(function(nm){var _on=(typeof ACTIVE_CP!=="undefined"&&ACTIVE_CP&&ACTIVE_CP.has(p.key+"|"+nm));rows+='<div class="asg-row'+(_on?'':' asg-off')+'"><span class="stdot '+(_on?'on':'off')+'"></span><span class="asg-name">'+clEsc(nm)+(thisMonth[nm]?'':' <span class="asg-hist">histórico</span>')+'</span><select class="asg-sel" data-plat="'+p.key+'" data-camp="'+encodeURIComponent(nm)+'">'+opts+'</select><span class="asg-status"></span></div>';});});list.innerHTML=rows||'<div style="color:#888">No hay campañas este mes.</div>';list.querySelectorAll(".asg-sel").forEach(function(sel){var plat=sel.dataset.plat,nm=decodeURIComponent(sel.dataset.camp);sel.value=ASSIGN[plat+"\x1f"+nm]||'general';sel.addEventListener("change",function(){var val=sel.value;if(val==='general')delete ASSIGN[plat+"\x1f"+nm];else ASSIGN[plat+"\x1f"+nm]=val;var st=sel.parentNode.querySelector(".asg-status");if(st){st.textContent="Guardando...";st.className="asg-status saving";}sel.classList.add("saving");api("assignment_set",{platform:plat,campaign:nm,plan:val}).then(function(){flagSaved();sel.classList.remove("saving");if(st){st.textContent="\u2713 Guardado";st.className="asg-status ok";clearTimeout(st._t);st._t=setTimeout(function(){st.textContent="";st.className="asg-status";},2200);}}).catch(function(){flagError();sel.classList.remove("saving");if(st){st.textContent="Error";st.className="asg-status err";}});});});document.getElementById("assignClose").onclick=closeAssign;var _as=document.getElementById("assignSearch");if(_as)_as.value="";o.style.display="flex";}
 function closeAssign(){var o=document.getElementById("assignOv");if(o)o.style.display="none";DATA=null;loadData();}
 function filterAssign(q){q=(q||"").toLowerCase().trim();var list=document.getElementById("assignList");if(!list)return;var groups=[],cur=null;[...list.children].forEach(function(el){if(el.classList.contains("asg-grp")){cur={hdr:el,any:false};groups.push(cur);}else if(el.classList.contains("asg-row")){var nm=((el.querySelector(".asg-name")||{}).textContent||"").toLowerCase();var show=!q||nm.indexOf(q)>=0;el.style.display=show?"":"none";if(show&&cur)cur.any=true;}});groups.forEach(function(g){g.hdr.style.display=g.any?"":"none";});}
+function fxRate(plat){var f=FX[plat];if(!f)return 0;var r=(FXOV[f.native]!=null&&FXOV[f.native]>0)?FXOV[f.native]:(+f.rate||0);return r;}
+function natSym(cur){return cur==='ARS'?'AR$':cur==='USD'?'US$':cur==='UYU'?'$U':cur==='CLP'?'CLP$':cur==='PEN'?'S/':cur==='PYG'?'₲':cur==='MXN'?'MX$':(cur||'')+' ';}
+function fmtNative(cur,n){return natSym(cur)+' '+Math.round(n).toLocaleString('es-AR');}
+function natPlanTxt(plat,uyu){var f=FX[plat];if(!f||!f.native||f.native===f.report||!(+uyu>0))return '';var r=fxRate(plat);if(!(r>0))return '';return '≈ '+fmtNative(f.native,(+uyu)*r);}
+function fxBadge(plat){var f=FX[plat];if(!f||!f.native||f.native===f.report)return '';var r=fxRate(plat);var over=(FXOV[f.native]!=null&&FXOV[f.native]>0);return ' <span class="fx-badge">1 '+natSym(f.report)+' ≈ '+(r>0?r.toFixed(1):'?')+' '+natSym(f.native)+(over?' (manual)':'')+' <button type="button" class="fx-edit" data-native="'+f.native+'" data-pipe="'+(+f.rate||0)+'">TC</button></span>';}
+function openFxEdit(native,pipe){var o=document.getElementById("fxOv");if(!o)return;document.getElementById("fxNative").textContent=native;document.getElementById("fxNative2").textContent=native;document.getElementById("fxReport").textContent=(typeof CURRENCY!=="undefined"?CURRENCY:'');document.getElementById("fxReport2").textContent=(typeof CURRENCY!=="undefined"?CURRENCY:'');document.getElementById("fxPipe").textContent=(+pipe||0).toFixed(2);var inp=document.getElementById("fxInput");inp.value=(FXOV[native]!=null&&FXOV[native]>0)?FXOV[native]:'';inp.dataset.native=native;document.getElementById("fxSaveBtn").onclick=saveFx;document.getElementById("fxResetBtn").onclick=resetFx;document.getElementById("fxCancelBtn").onclick=closeFx;o.style.display="flex";setTimeout(function(){inp.focus();},50);}
+function closeFx(){var o=document.getElementById("fxOv");if(o)o.style.display="none";}
+async function saveFx(){var inp=document.getElementById("fxInput");var nat=inp.dataset.native;var val=inp.value.trim();if(val===''||!(+val>0)){closeFx();return;}try{await api("fx_override_set",{native:nat,rate:Number(val)});FXOV[nat]=Number(val);closeFx();render();}catch(e){alert("No se pudo guardar: "+((e&&e.message)||e));}}
+async function resetFx(){var inp=document.getElementById("fxInput");var nat=inp.dataset.native;try{await api("fx_override_set",{native:nat,rate:null});delete FXOV[nat];closeFx();render();}catch(e){alert("No se pudo: "+((e&&e.message)||e));}}
 function inCurPlan(g,nm){var pid=ASSIGN[g+"\x1f"+nm];return (CURRENT_PLAN&&CURRENT_PLAN!=="general")?(pid===CURRENT_PLAN):!pid;}
 var DEL_PLAN_ID=null,DEL_PLAN_NAME="";
 function openDelPlan(id,name){DEL_PLAN_ID=id;DEL_PLAN_NAME=name;var o=document.getElementById("delPlanOv");if(!o)return;document.getElementById("delPlanName").textContent=name;var inp=document.getElementById("delPlanInput");inp.value="";var btn=document.getElementById("delPlanBtn");btn.disabled=true;btn.style.background="#e0a8b0";btn.style.cursor="not-allowed";btn.textContent="Eliminar definitivamente";document.getElementById("delPlanCancel").onclick=closeDelPlan;btn.onclick=confirmDelPlan;inp.onkeydown=function(e){if(e.key==="Enter"&&!btn.disabled){e.preventDefault();confirmDelPlan();}};o.style.display="flex";setTimeout(function(){inp.focus();},50);}
@@ -1238,5 +1254,22 @@ if(document.readyState!=="loading"){loadData();initClientFlow();}else{window.add
     </div>
   </div>
 </div>
+
+<div id="fxOv" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10002;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;padding:24px;width:min(430px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.25);font-family:var(--font-b)">
+    <div style="font-family:var(--font-h);font-size:18px;margin-bottom:6px">Tipo de cambio manual</div>
+    <div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:14px">Solo afecta al presupuesto <b>planificado</b> mostrado en <b id="fxNative"></b>. El consumo real usa el valor exacto de la plataforma. Dejalo vacío para usar el automático del pipeline (actual: <b id="fxPipe"></b>).</div>
+    <label style="display:block;font-size:12px;color:#666;margin-bottom:4px">1 <span id="fxReport2"></span> = ? <span id="fxNative2"></span></label>
+    <input id="fxInput" type="number" step="0.01" min="0" placeholder="automático" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1.5px solid var(--uke-gris-suave);border-radius:8px;font-size:14px;margin-bottom:18px">
+    <div style="display:flex;gap:10px;justify-content:space-between;align-items:center">
+      <button id="fxResetBtn" style="padding:9px 12px;border:1.5px solid var(--uke-gris-suave);background:#fff;border-radius:8px;cursor:pointer;font-size:12.5px;color:#666">Usar automático</button>
+      <div style="display:flex;gap:10px">
+        <button id="fxCancelBtn" style="padding:9px 16px;border:1.5px solid var(--uke-gris-suave);background:#fff;border-radius:8px;cursor:pointer;font-size:14px">Cancelar</button>
+        <button id="fxSaveBtn" style="padding:9px 18px;border:none;background:var(--uke-rojo);color:#fff;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<span id="fxReport" style="display:none"></span>
 </body>
 </html>
