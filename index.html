@@ -210,7 +210,7 @@ tbody td:first-child{text-align:left;white-space:normal;min-width:220px}
     .adset-empty{color:#bbb;font-style:italic;padding-left:40px !important}
     .plan-derived{font-weight:700;color:#444}
     .nat{font-size:10.5px;color:#999;margin-top:2px;line-height:1.2;white-space:nowrap}
-    .natplan{color:#8a6d00}
+    .natplan{color:#8a6d00}.pend{color:#E0912B;font-size:12px;font-style:italic}
     .fx-badge{font-size:10px;font-weight:600;color:#f5f5f5;opacity:.95;margin-left:8px;font-family:var(--font-b)}
     .fx-edit{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.15);color:#fff;border-radius:6px;padding:1px 6px;font-size:9px;cursor:pointer;margin-left:3px}
     .fx-edit:hover{background:rgba(255,255,255,.32)}
@@ -438,7 +438,7 @@ const modePrefix = () => DEMO ? LS_PREFIX+"demo__" : LS_PREFIX;
 // respaldado en BigQuery (prune_cl.media_plan_budgets) -> compartido por todo el equipo.
 let BUDGETS={};
 let ADSETS={}, ABUD={}, EXPANDED={}, _abTimers={};
-var CURRENT_PLAN=null, CURRENT_PLAN_NAME="", PLANS_CACHE=[], CLIENT_NAME="", PENDING_PLAN=null, ASSIGN={}, ALL_CAMPS={}, ALL_PLANNED={}, HIST_CAMPS=null, FX={}, FXOV={}, MONRATE={};
+var CURRENT_PLAN=null, CURRENT_PLAN_NAME="", PLANS_CACHE=[], CLIENT_NAME="", PENDING_PLAN=null, ASSIGN={}, ALL_CAMPS={}, ALL_PLANNED={}, HIST_CAMPS=null, FX={}, FXOV={}, MONRATE={}, PENDING_PLAT={};
 function akey(plat,camp,aset){return plat+"\x1f"+camp+"\x1f"+aset;}
 function getAdsetBudget(plat,camp,aset){var v=ABUD[akey(plat,camp,aset)];return (v==null)?"":String(v);}
 function adsetSum(plat,camp){var pre=plat+"\x1f"+camp+"\x1f",s=0;for(var k in ABUD){if(k.indexOf(pre)===0)s+=+ABUD[k]||0;}return s;}
@@ -569,6 +569,7 @@ async function loadData(){if(!CURRENT_CLIENT){return;}
     ALL_PLANNED={};Object.keys(PLANNED).forEach(function(g){ALL_PLANNED[g]=(PLANNED[g]||[]).slice();});
     (function(){function _add(g,nm){if(!C[g])return;for(var i=0;i<C[g].length;i++){if(C[g][i].name===nm)return;}C[g].push({name:nm,spend:0,rawspend:0});}Object.keys(ASSIGN).forEach(function(k){var ix=k.indexOf("\x1f");if(ix<0)return;_add(k.slice(0,ix),k.slice(ix+1));});if(typeof ACTIVE_CP!=="undefined"&&ACTIVE_CP&&ACTIVE_CP.forEach){ACTIVE_CP.forEach(function(k){var ix=k.indexOf("|");if(ix<0)return;_add(k.slice(0,ix),k.slice(ix+1));});}})();
     (function(){function _ip(g,nm){var pid=ASSIGN[g+"\x1f"+nm];return (CURRENT_PLAN&&CURRENT_PLAN!=='general')?(pid===CURRENT_PLAN):!pid;}Object.keys(C).forEach(function(g){C[g]=C[g].filter(function(c){return _ip(g,c.name);});});Object.keys(PLANNED).forEach(function(g){PLANNED[g]=(PLANNED[g]||[]).filter(function(pl){return _ip(g,pl.name);});});})();
+    PENDING_PLAT={};Object.keys(D).forEach(function(g){var ha=false;if(typeof ACTIVE_CP!=="undefined"&&ACTIVE_CP&&ACTIVE_CP.forEach){ACTIVE_CP.forEach(function(k){if(k.indexOf(g+"|")===0)ha=true;});}PENDING_PLAT[g]=!!(MB.isCur&&Object.keys(D[g]||{}).length===0&&ha);});
     DATA={camps:C, daily:D, ga4:{revenue:+g.rev||0, transactions:+g.tx||0, sessions:+g.sess||0}};
     render();
   }catch(e){
@@ -651,7 +652,7 @@ function render(){
       tr.innerHTML=`
         <td><span class="caret"></span><span class="stdot ${ACTIVE_CP.has(p.key+"|"+c.name)?"on":"off"}"></span><span class="camp-name">${c.name}</span></td>
         <td>${hasAdsetBudget(p.key,c.name)?`<span class="plan-derived" title="Suma de conjuntos de anuncios">${fmtMoney(adsetSum(p.key,c.name))} <span class="derived-tag">adsets</span></span>`:`<input class="plan-inp ${getBudget(ym,p.key,c.name)===""?'empty':''}" type="number" min="0" step="1000" placeholder="0"${isPast?" disabled":""} value="${getBudget(ym,p.key,c.name)}" data-plat="${p.key}" data-name="${encodeURIComponent(c.name)}">`}</td>
-        <td>${fmtMoney(c.spend)}<div class="progress"><span style="width:${bar}%;background:${p.color}"></span></div></td>
+        <td>${(c.spend===0&&PENDING_PLAT[p.key])?'<span class="pend">— pendiente</span>':fmtMoney(c.spend)}<div class="progress"><span style="width:${bar}%;background:${p.color}"></span></div></td>
         <td>${bu>0?ep.toFixed(0)+"%":"—"}</td>
         
         <td data-neg="${!isPast&&ritmo<0}">${isPast?"&mdash;":(bu>0?fmtMoney(ritmo):"&mdash;")}</td>
