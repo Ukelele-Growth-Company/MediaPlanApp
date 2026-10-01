@@ -639,7 +639,7 @@ function render(){
     const gr=document.createElement("tr");gr.className="grp-row "+p.key;
     gr.innerHTML=`<td colspan="6">${p.label}</td>`;body.appendChild(gr);
     // rows
-    const visible=camps.filter(c=> showAll || c.spend>0 || getBudget(ym,p.key,c.name)!=="");
+    const visible=camps.filter(c=> showAll || c.spend>0 || getBudget(ym,p.key,c.name)!=="" || ASSIGN[p.key+"\x1f"+c.name] || (typeof ACTIVE_CP!=="undefined"&&ACTIVE_CP&&ACTIVE_CP.has(p.key+"|"+c.name)));
     if(visible.length===0){
       const tr=document.createElement("tr");tr.innerHTML=`<td colspan="6" style="color:#999;font-style:italic">Sin campañas con inversión este mes</td>`;body.appendChild(tr);
     }
