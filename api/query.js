@@ -82,6 +82,12 @@ const QUERIES = {
     params: { client: p.client, month: p.month, plan: (p.plan||'general'), amount: (p.amount==null||p.amount==='')?null:Number(p.amount), currency: p.currency||null },
     types: { client: 'STRING', month: 'STRING', plan: 'STRING', amount: 'FLOAT64', currency: 'STRING' }
   }),
+  currency: () => ({ query: "SELECT IF(LOGICAL_OR(use_converted), IFNULL((SELECT MAX(reporting_currency) FROM \`" + PROJECT + ".cross_clients.media_config\` WHERE client='__DS__'), 'USD'), UPPER(MAX(account_currency))) AS ccy FROM " + VCAMP + " WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 60 DAY)", params: {} }),
+  clients: () => ({ query: "WITH ai AS (SELECT client_normalized_name AS cli, ANY_VALUE(vertical) AS vertical, ANY_VALUE(ukelele_group) AS grp, LOGICAL_OR(NOT has_terminated) AS active FROM `" + PROJECT + ".cross_clients.accounts_info` GROUP BY cli), plats AS (SELECT business_name AS cli, STRING_AGG(DISTINCT platform ORDER BY platform) AS platforms FROM `" + PROJECT + ".cross_clients.complete_ads_report` WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 180 DAY) GROUP BY cli) SELECT ai.cli AS client, plats.platforms AS platforms, ai.vertical AS vertical, ai.grp AS grp, ai.active AS active FROM ai LEFT JOIN plats ON ai.cli = plats.cli ORDER BY ai.vertical NULLS LAST, ai.cli", params: {} }),
+  pacing_campaigns: p => ({
+    query: `SELECT ${PCASE} grp, campaign_name name, SUM(cost) spend, SUM(cost_raw) rawspend, MAX(account_currency) accy FROM ${VCAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to GROUP BY grp, name HAVING spend > 0`,
+    params: { from: p.from, to: p.to }
+  }),
   pacing_daily: p => ({
     query: `SELECT CAST(date AS STRING) date, ${PCASE} grp, SUM(cost) spend FROM ${VCAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to GROUP BY date, grp`,
     params: { from: p.from, to: p.to }
