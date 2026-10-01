@@ -78,7 +78,7 @@ const QUERIES = {
   planned_del: p => ({ query: "DELETE FROM `" + PROJECT + ".cross_clients.planned_campaigns` WHERE client=@client AND month=@month AND platform=@platform AND campaign_name=@campaign", params: { client: p.client, month: p.month, platform: p.platform, campaign: p.campaign }, types: { client: 'STRING', month: 'STRING', platform: 'STRING', campaign: 'STRING' } }),
   target_get: p => ({ query: "SELECT amount, currency FROM `" + PROJECT + ".cross_clients.media_plan_targets` WHERE client=@client AND month=@month AND plan_id=@plan ORDER BY updated_at DESC LIMIT 1", params: { client: p.client, month: p.month, plan: (p.plan||'general') }, types: { client: 'STRING', month: 'STRING', plan: 'STRING' } }),
   target_set: p => ({
-    query: "DELETE FROM `" + PROJECT + ".cross_clients.media_plan_targets` WHERE client=@client AND month=@month AND plan_id=@plan; INSERT INTO `" + PROJECT + ".cross_clients.media_plan_targets` (client,month,plan_id,amount,currency,updated_at) SELECT @client,@month,@plan,@amount,@currency,CURRENT_TIMESTAMP() WHERE @amount IS NOT NULL",
+    query: "DELETE FROM `" + PROJECT + ".cross_clients.media_plan_targets` WHERE client=@client AND month=@month AND plan_id=@plan; INSERT INTO `" + PROJECT + ".cross_clients.media_plan_targets` (client,month,plan_id,amount,currency,updated_at) SELECT @client,@month,@plan,@amount,@currency,CURRENT_TIMESTAMP() FROM UNNEST([1]) WHERE @amount IS NOT NULL",
     params: { client: p.client, month: p.month, plan: (p.plan||'general'), amount: (p.amount==null||p.amount==='')?null:Number(p.amount), currency: p.currency||null },
     types: { client: 'STRING', month: 'STRING', plan: 'STRING', amount: 'FLOAT64', currency: 'STRING' }
   }),
@@ -120,7 +120,7 @@ const QUERIES = {
     types: { client:'STRING', plan:'STRING', month:'STRING' }
   }),
   budget_set: p => ({
-    query: "DELETE FROM `" + PROJECT + ".cross_clients.media_plan_budgets` WHERE client=@client AND plan_id=@plan AND month=@month AND platform=@platform AND campaign=@campaign; INSERT INTO `" + PROJECT + ".cross_clients.media_plan_budgets` (client,plan_id,month,platform,campaign,amount,updated_at) SELECT @client,@plan,@month,@platform,@campaign,@amount,CURRENT_TIMESTAMP() WHERE @amount IS NOT NULL",
+    query: "DELETE FROM `" + PROJECT + ".cross_clients.media_plan_budgets` WHERE client=@client AND plan_id=@plan AND month=@month AND platform=@platform AND campaign=@campaign; INSERT INTO `" + PROJECT + ".cross_clients.media_plan_budgets` (client,plan_id,month,platform,campaign,amount,updated_at) SELECT @client,@plan,@month,@platform,@campaign,@amount,CURRENT_TIMESTAMP() FROM UNNEST([1]) WHERE @amount IS NOT NULL",
     params: { client: p.client, plan: (p.plan||'general'), month: p.month, platform: p.platform, campaign: p.campaign, amount: (p.amount == null || p.amount === '') ? null : Number(p.amount) },
     types: { client:'STRING', plan:'STRING', month: 'STRING', platform: 'STRING', campaign: 'STRING', amount: 'FLOAT64' }
   }),
