@@ -110,8 +110,8 @@ const QUERIES = {
     params: { camp: p.camp, adset: p.adset, from: p.from, to: p.to }
   }),
   active_campaigns: p => ({
-    query: `WITH mx AS (SELECT custom_channel cc, MAX(date) d FROM ${VCAMP} WHERE ${PLAT} AND date BETWEEN @from AND @to GROUP BY custom_channel) SELECT DISTINCT ${PCASE} grp, campaign_name name FROM ${VCAMP} v JOIN mx ON v.custom_channel=mx.cc AND v.date=mx.d WHERE v.cost>0`,
-    params: { from: p.from, to: p.to }
+    query: `SELECT DISTINCT ${PCASE} grp, campaign_name name FROM ${VCAMP} WHERE ${PLAT} AND cost>0 AND date >= DATE_SUB(CURRENT_DATE(), INTERVAL 10 DAY)`,
+    params: {}
   }),
   active_adsets: p => ({
     query: `WITH mx AS (SELECT MAX(date) d FROM ${VAD} WHERE campaign_name=@name AND date BETWEEN @from AND @to) SELECT DISTINCT ad_set_name name FROM ${VAD}, mx WHERE campaign_name=@name AND cost>0 AND date=mx.d`,
