@@ -452,6 +452,7 @@ function getBudget(ym,plat,name){
   const v=BUDGETS[bkeyC(plat,name)];return (v==null)?"":String(v);
 }
 const _bTimers={};
+function setBudgetNow(ym,plat,name,val){var k=bkeyC(plat,name);clearTimeout(_bTimers[k]);if(DEMO){if(val===""||val==null)localStorage.removeItem(bKey(ym,plat,name));else localStorage.setItem(bKey(ym,plat,name),val);return;}if(val===""||val==null)delete BUDGETS[k];else BUDGETS[k]=Number(val);api("budget_set",{month:ym,platform:plat,campaign:name,plan:CURRENT_PLAN,amount:(val===""||val==null)?null:Number(val)}).then(function(){flagSaved();}).catch(function(){flagError();});}
 function setBudget(ym,plat,name,val){
   if(DEMO){if(val===""||val==null)localStorage.removeItem(bKey(ym,plat,name));else localStorage.setItem(bKey(ym,plat,name),val);return;}
   const k=bkeyC(plat,name);
@@ -718,7 +719,7 @@ function render(){
       inp.classList.toggle("empty",inp.value==="");
       flagSaved(); renderSummary(grandSpentCache); var _np=inp.parentNode.querySelector(".natplan");if(_np)_np.textContent=natPlanTxt(inp.dataset.plat,inp.value); // light recompute
     });
-    inp.addEventListener("change",render);inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();render();}}); // full re-render (updates subtotals/pills) on blur/enter
+    inp.addEventListener("change",function(){setBudgetNow(ym,inp.dataset.plat,decodeURIComponent(inp.dataset.name),inp.value);render();});inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();inp.blur();}}); // full re-render (updates subtotals/pills) on blur/enter
   });
 
     body.querySelectorAll(".camp-row.clickable").forEach(function(row){row.addEventListener("click",function(e){if(e.target.closest(".plan-inp"))return;var ck=row.dataset.plat+"\x1f"+decodeURIComponent(row.dataset.cname);EXPANDED[ck]=!EXPANDED[ck];render();});});
