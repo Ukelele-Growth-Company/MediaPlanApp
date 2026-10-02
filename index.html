@@ -557,7 +557,7 @@ async function loadData(){if(!CURRENT_CLIENT){return;}
       api("pacing_campaigns",P),
       api("pacing_daily",P),
       api("ga4_totals",P),
-      api("budgets_get",{month:monthSel.value,plan:CURRENT_PLAN}),api("active_campaigns",P),api("target_get",{month:monthSel.value,plan:CURRENT_PLAN}),api("planned_get",{month:monthSel.value}),api("pacing_adsets",P),api("adset_budgets_get",{month:monthSel.value}),api("assignments_get",{}),api("fx_rates",{}),api("fx_overrides_get",{}),api("fx_month_get",{month:monthSel.value})
+      api("budgets_get",{month:monthSel.value,plan:CURRENT_PLAN}),api("active_campaigns",P),api("target_get",{month:monthSel.value,plan:CURRENT_PLAN}),api("planned_get",{month:monthSel.value,plan:CURRENT_PLAN}),api("pacing_adsets",P),api("adset_budgets_get",{month:monthSel.value}),api("assignments_get",{}),api("fx_rates",{}),api("fx_overrides_get",{}),api("fx_month_get",{month:monthSel.value})
     ]);
     MANUAL_TARGET=(tgtRows&&tgtRows[0]&&tgtRows[0].amount!=null)?Number(tgtRows[0].amount):null;PLANNED={};(plannedRows||[]).forEach(function(pr){var g=pr.platform;if(!PLANNED[g])PLANNED[g]=[];PLANNED[g].push({name:pr.campaign_name,notas:pr.notas});});const B={};(budRows||[]).forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});
     if(Object.keys(B).length===0 && MB.isCur){const pd=new Date(MB.first.getFullYear(),MB.first.getMonth()-1,1);const prevYm=pd.getFullYear()+"-"+String(pd.getMonth()+1).padStart(2,"0");try{const prevRows=await api("budgets_get",{month:prevYm,plan:CURRENT_PLAN});if(prevRows&&prevRows.length){prevRows.forEach(r=>{B[bkeyC(r.platform,r.campaign)]=+r.amount||0;});prevRows.forEach(r=>{setBudget(monthSel.value,r.platform,r.campaign,+r.amount||0);});}}catch(e){}}ADSETS={};(asetRows||[]).forEach(function(r){var kk=r.grp+"\x1f"+r.name;if(!ADSETS[kk])ADSETS[kk]=[];ADSETS[kk].push({name:r.aset,cons:+r.cons||0});});ABUD={};(abudRows||[]).forEach(function(r){ABUD[akey(r.platform,r.campaign,r.ad_set)]=+r.amount||0;});BUDGETS=B;
@@ -569,7 +569,7 @@ async function loadData(){if(!CURRENT_CLIENT){return;}
     ALL_CAMPS={};Object.keys(C).forEach(function(g){ALL_CAMPS[g]=C[g].slice();});
     ALL_PLANNED={};Object.keys(PLANNED).forEach(function(g){ALL_PLANNED[g]=(PLANNED[g]||[]).slice();});
     (function(){function _add(g,nm){if(!C[g])return;for(var i=0;i<C[g].length;i++){if(C[g][i].name===nm)return;}C[g].push({name:nm,spend:0,rawspend:0});}Object.keys(ASSIGN).forEach(function(k){var ix=k.indexOf("\x1f");if(ix<0)return;_add(k.slice(0,ix),k.slice(ix+1));});if(typeof ACTIVE_CP!=="undefined"&&ACTIVE_CP&&ACTIVE_CP.forEach){ACTIVE_CP.forEach(function(k){var ix=k.indexOf("|");if(ix<0)return;_add(k.slice(0,ix),k.slice(ix+1));});}})();
-    (function(){function _ip(g,nm){var pid=ASSIGN[g+"\x1f"+nm];return (CURRENT_PLAN&&CURRENT_PLAN!=='general')?(pid===CURRENT_PLAN):!pid;}Object.keys(C).forEach(function(g){C[g]=C[g].filter(function(c){return _ip(g,c.name);});});Object.keys(PLANNED).forEach(function(g){PLANNED[g]=(PLANNED[g]||[]).filter(function(pl){return _ip(g,pl.name);});});})();
+    (function(){var PS={};Object.keys(PLANNED).forEach(function(g){PS[g]={};(PLANNED[g]||[]).forEach(function(pl){PS[g][pl.name]=1;});});function _ip(g,nm){var pid=ASSIGN[g+"\x1f"+nm];var pl=PS[g]&&PS[g][nm];if(CURRENT_PLAN&&CURRENT_PLAN!=='general')return (pid===CURRENT_PLAN)||!!pl;return (!pid)||!!pl;}Object.keys(C).forEach(function(g){C[g]=C[g].filter(function(c){return _ip(g,c.name);});});Object.keys(PLANNED).forEach(function(g){var inC={};(C[g]||[]).forEach(function(c){inC[c.name]=1;});PLANNED[g]=(PLANNED[g]||[]).filter(function(pl){return !inC[pl.name];});});})();
     PENDING_PLAT={};Object.keys(D).forEach(function(g){var ha=false;if(typeof ACTIVE_CP!=="undefined"&&ACTIVE_CP&&ACTIVE_CP.forEach){ACTIVE_CP.forEach(function(k){if(k.indexOf(g+"|")===0)ha=true;});}PENDING_PLAT[g]=!!(MB.isCur&&Object.keys(D[g]||{}).length===0&&ha);});
     DATA={camps:C, daily:D, ga4:{revenue:+g.rev||0, transactions:+g.tx||0, sessions:+g.sess||0}};
     render();
@@ -609,7 +609,7 @@ function statePill(bu,proj){
       if(!name){document.getElementById("planName").focus();return;}
       var btn=document.getElementById("planSaveBtn");btn.disabled=true;btn.textContent="Guardando...";
       try{
-        await api("planned_add",{month:monthSel.value,platform:plat,campaign:name,notas:notas});
+        await api("planned_add",{month:monthSel.value,platform:plat,campaign:name,notas:notas,plan:CURRENT_PLAN});
         if(!PLANNED[plat])PLANNED[plat]=[];
         var _ex=PLANNED[plat].filter(function(x){return x.name===name;})[0];
         if(_ex){_ex.notas=notas;}else{PLANNED[plat].push({name:name,notas:notas});}
@@ -620,7 +620,7 @@ function statePill(bu,proj){
     }
     async function delPlanned(plat,name){
       if(!confirm("¿Eliminar la campaña planificada \""+name+"\"?"))return;
-      try{await api("planned_del",{month:monthSel.value,platform:plat,campaign:name});PLANNED[plat]=(PLANNED[plat]||[]).filter(function(x){return x.name!==name;});render();}
+      try{await api("planned_del",{month:monthSel.value,platform:plat,campaign:name,plan:CURRENT_PLAN});PLANNED[plat]=(PLANNED[plat]||[]).filter(function(x){return x.name!==name;});render();}
       catch(e){alert("No se pudo eliminar: "+((e&&e.message)||e));}
     }
 
