@@ -47,6 +47,10 @@ const QUERIES = {
     query: "DELETE FROM \`" + PROJECT + ".cross_clients.media_plans\` WHERE client=@client AND plan_id=@plan; DELETE FROM \`" + PROJECT + ".cross_clients.media_plan_assignments\` WHERE client=@client AND plan_id=@plan",
     params: { client:p.client, plan:p.plan }, types: { client:'STRING', plan:'STRING' }
   }),
+  plan_rename: p => ({
+    query: "UPDATE `" + PROJECT + ".cross_clients.media_plans` SET name=@name, updated_at=CURRENT_TIMESTAMP() WHERE client=@client AND plan_id=@plan",
+    params: { client:p.client, plan:p.plan, name:p.name }, types: { client:'STRING', plan:'STRING', name:'STRING' }
+  }),
   assignments_get: p => ({
     query: "SELECT platform, campaign, plan_id FROM \`" + PROJECT + ".cross_clients.media_plan_assignments\` WHERE client=@client",
     params: { client:p.client }, types: { client:'STRING' }
@@ -173,7 +177,7 @@ module.exports = async (req, res) => {
     var __q = query.split('__DS__').join(__ds);
     const opts = { query: __q, params, location: 'US' };
     if (types) opts.types = types;
-    let rows; try { const _r = await client().query(opts); rows = _r[0]; } catch(_e){ var _isW=/_set$|_add$|_del$|_delete$|_create$|_assign|_upsert|clone/.test(body.kind); if(!_isW&&(body.kind==='budgets_get'||String((_e&&_e.message)||'').indexOf('Not found')>=0)){ rows=[]; } else { throw _e; } }
+    let rows; try { const _r = await client().query(opts); rows = _r[0]; } catch(_e){ var _isW=/_set$|_add$|_del$|_delete$|_create$|_assign|_upsert|clone|rename/.test(body.kind); if(!_isW&&(body.kind==='budgets_get'||String((_e&&_e.message)||'').indexOf('Not found')>=0)){ rows=[]; } else { throw _e; } }
     res.status(200).json({ rows });
   } catch (e) {
     res.status(500).json({ error: (e && e.message) || 'Error de query' });
